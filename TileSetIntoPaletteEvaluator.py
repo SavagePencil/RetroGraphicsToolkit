@@ -71,7 +71,6 @@ class TileSetIntoPaletteEvaluator(Evaluator):
 
         return (best_score, best_moves)
 
-
     def update_moves_for_destination(self, destination_index, destination):
         # If we have a "None" move list for this destination, that's because 
         # we've already determined that we can't make a move into it.  
@@ -109,6 +108,11 @@ class TileSetIntoPaletteEvaluator(Evaluator):
                 prop_name = prop_val_tuple[0]
                 prop_val = prop_val_tuple[1]
                 dest_color.properties.attempt_set_property(prop_name, prop_val)
+
+    @staticmethod
+    def is_destination_empty(destination):
+        # Palettes are always instantiated.
+        return False
 
     def _get_changes_to_fit(self, destination):
         # Check this tile to see if it has a palette assigned.  If it does, does it match the destination?

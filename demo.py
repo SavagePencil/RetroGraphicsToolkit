@@ -105,7 +105,7 @@ def demo_flags():
     while solver.is_complete() == False:
         solver.update()
 
-    print(f"Found {len(solver.solutions)} tile into palettes solutions!")
+    print(f"Found {len(solver.solutions)} tile-into-palettes solutions!")
     # Find those with the fewest or best colors.
     best_num_colors = math.inf
     worst_num_colors = -math.inf
@@ -138,6 +138,27 @@ def demo_flags():
         
     print(f"Found {len(best_solutions)} best solutions with {best_num_colors} colors.")
     print(f"Found {len(worst_solutions)} worst solutions with {worst_num_colors} colors.")
+
+    # Pick a best solution and flatten it.
+    solution = best_solutions[0]
+    for move in solution:
+        dest_pal_index = move.dest_index
+        dest_pal = dest_palette_list[dest_pal_index]
+        change_list = move.change_list
+        for change in change_list:
+            color_index = change[0]
+
+            dest_color = dest_pal.colors[color_index]
+
+            # Each change is a tuple of property name and params.
+            prop_name = change[0]
+            prop_val = change[1]
+
+            dest_color.properties.attempt_set_property(prop_name, prop_val)
+
+    pal_idx = 0
+    #for palette in dest_palette_list:
+
 
 
 
@@ -198,7 +219,7 @@ def demo_colors():
 
     solutions = solver.solutions
 
-    print(f"Found {len(solutions)} colors into colors solutions.")
+    print(f"Found {len(solutions)} colors-into-colors solutions.")
 
 
 demo_colors()

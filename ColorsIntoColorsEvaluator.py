@@ -105,6 +105,17 @@ class ColorsIntoColorsEvaluator(Evaluator):
             src_val = self.source.properties.get_property(prop_name)
             destination.properties.attempt_set_property(prop_name, src_val)
 
+    @staticmethod
+    def is_destination_empty(destination):
+        # A ColorEntry is considered empty if it has no properties set.
+        for prop_name in ColorEntry.sProperty_def_map.keys():
+            if destination.properties.get_property(prop_name) is not None:
+                # We're not empty if we have a property set
+                return False
+        
+        # We're empty!
+        return True
+
     def _get_changes_to_fit(self, destination):
         changes = []
 

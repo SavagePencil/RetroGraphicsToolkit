@@ -152,6 +152,25 @@ class ConstraintSolver:
             self._dirty_destination_indices_bitset = BitSet(len(wip_solution_state))
             self._dirty_destination_indices_bitset.set_all()
 
+            # Track which of the destinations are flagged as "empty" (those without 
+            # anything assigned to them).  
+            # We do this so that we don't do a ton of comparisons against each and 
+            # every empty destination, when the results will be exactly the same.
+            # We'll keep the first such one in the set, but all subsequent ones
+            # won't be considered.
+            self._empty_destinations_bitset = BitSet(len(wip_solution_state))
+            first_empty_already_found = False
+            for dest_index in range(len(wip_solution_state)):
+                destination = wip_solution_state[dest_index]
+                if self._evaluator_class.is_destination_empty(destination):
+                    self._empty_destinations_bitset.set_bit(dest_index)
+
+                    if first_empty_already_found == False:
+                        first_empty_already_found = True
+                    else:
+                        # Clear out the dirty flag so that *this* empty isn't considered fair game
+                        self._dirty_destination_indices_bitset.clear_bit(dest_index)
+
         def assess_moves(self):
             # If no unmapped sources remain, flag success
             if len(self._source_index_to_evaluator.values()) == 0:
@@ -235,3 +254,15 @@ class ConstraintSolver:
 
             # Flag that this destination is now dirty.
             self._dirty_destination_indices_bitset.set_bit(dest_index)
+
+            # If this index was once an empty, flag a new one as the available one.
+            # Remember:  we only ever want ONE empty at any given time.
+            if self._empty_destinations_bitset.is_set(dest_index):
+                # Clear current one.
+                self._empty_destinations_bitset.set_bit(dest_index)
+
+                # Can we find another one?
+                next_empty = self._empty_destinations_bitset.get_next_set_bit_index(dest_index + 1)
+                if next_empty is not None:
+                    # Mark it as dirty so that we can evaluate it as a possible move destination.
+                    self._dirty_destination_indices_bitset.set_bit(next_empty)
