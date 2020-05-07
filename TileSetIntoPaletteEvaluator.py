@@ -16,6 +16,11 @@ class TileSetIntoPaletteEvaluator(Evaluator):
             self.move = move
             self.base_score = base_score
 
+    class ChangeList:
+        def __init__(self, color_into_color_moves):
+            # We keep a list of moves for our tile's colors into the dest palette.
+            self.color_into_color_moves = color_into_color_moves
+
     @classmethod
     def factory_constructor(cls, source_index, source):
         return TileSetIntoPaletteEvaluator(source_index, source)
@@ -54,7 +59,7 @@ class TileSetIntoPaletteEvaluator(Evaluator):
                         score = score + TileSetIntoPaletteEvaluator.SCORE_ADJUST_ONLY_ONE_MOVE
 
                     # Are there no changes to make this move?
-                    if len(potential_move.move.change_list) == 0:
+                    if len(potential_move.move.change_list.color_into_color_moves) == 0:
                         # It's free!
                         score = score + TileSetIntoPaletteEvaluator.SCORE_ADJUST_FREE_MOVE
 
@@ -97,17 +102,21 @@ class TileSetIntoPaletteEvaluator(Evaluator):
 
             self._destination_to_potential_move_list[destination_index] = potential_move_list
 
-    def apply_changes(self, destination, change_list):
-        # Our changes lists are (dest_palette_color_index, [list of (property, value)])
-        for change in change_list:
-            dest_palette_color_index = change[0]
-            prop_val_list = change[1]
+    @staticmethod
+    def apply_changes(source, destination, change_list):
+        # This class doesn't apply any changes to the Palette object itself.
 
-            dest_color = destination.colors[dest_palette_color_index]
-            for prop_val_tuple in prop_val_list:
-                prop_name = prop_val_tuple[0]
-                prop_val = prop_val_tuple[1]
-                dest_color.properties.attempt_set_property(prop_name, prop_val)
+        # Apply our ColorsIntoColors changes, which is a list of Moves.
+        tile_colors = list(source.color_map.get_entries())
+        for color_into_color_move in change_list.color_into_color_moves:
+            src_color_idx = color_into_color_move.source_index
+            src_color = tile_colors[src_color_idx]
+
+            dest_palette_color_idx = color_into_color_move.dest_index
+            dest_palette_color = destination.colors[dest_palette_color_idx]
+
+            color_into_color_change_list = color_into_color_move.change_list
+            ColorsIntoColorsEvaluator.apply_changes(src_color, dest_palette_color, color_into_color_change_list)
 
     @staticmethod
     def is_destination_empty(destination):
@@ -135,42 +144,24 @@ class TileSetIntoPaletteEvaluator(Evaluator):
             # No solutions means we can't fit.
             return None
         
-        changes = []
+        change_lists = []
         # Each solution is a possible way to fit the tile into the palette
         for solution in solutions:
-            # The Color-to-Color evaluator gives us a list of moves that needs translation for Tile-to-Palette.
-            # We'll consolidate all changes down.
-            palette_color_index_to_change_list = {}
+            # A solution is just a list of Moves.  Make each solution into its own ChangeList.
+            change_list = TileSetIntoPaletteEvaluator.ChangeList(solution)
+            change_lists.append(change_list)
 
-            for move in solution:
-                dest_palette_entry_index = move.dest_index
-
-                if dest_palette_entry_index not in palette_color_index_to_change_list:
-                    palette_color_index_to_change_list[dest_palette_entry_index] = []
-
-                for change in move.change_list:
-                    # Change is a tuple of (property name, property value)
-                    palette_color_index_to_change_list[dest_palette_entry_index].append(change)
-
-            # Flatten the dictionary.
-            changes_for_solution = []
-            for palette_color_index, change_list in palette_color_index_to_change_list.items():
-                index_changes_tuple = (palette_color_index, change_list)
-                changes_for_solution.append(index_changes_tuple)
-
-            changes.append(changes_for_solution)
-        
-        return changes
+        return change_lists
 
     @staticmethod
     def _get_score_for_changes(change_list):
         score = 0
 
         # For every color that matches (i.e., no changes), add to the score
-        for change in change_list:
-            # Change is (palette color index, [property name, property value] list)
-            prop_change_list = change[1]
-            if len(prop_change_list) == 0:
+        for color_into_color_move in change_list.color_into_color_moves:
+            # Go through each color-into-color move.
+            property_name_value_tuple_list = color_into_color_move.change_list.property_name_value_tuple_list
+            if len(property_name_value_tuple_list) == 0:
                 score = score + TileSetIntoPaletteEvaluator.SCORE_ADJUST_EACH_COLOR_MATCHING
 
         return score

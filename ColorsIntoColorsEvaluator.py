@@ -22,6 +22,10 @@ class ColorsIntoColorsEvaluator(Evaluator):
             self.move = move
             self.base_score = base_score
 
+    class ChangeList:
+        def __init__(self, property_name_value_tuple_list):
+            self.property_name_value_tuple_list = property_name_value_tuple_list
+
     @classmethod
     def factory_constructor(cls, source_index, source):
         return ColorsIntoColorsEvaluator(source_index, source)
@@ -59,7 +63,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
                     score = score + ColorsIntoColorsEvaluator.SCORE_ADJUST_ONLY_ONE_MOVE
 
                 # Are there no changes to make this move?
-                if len(potential_move.move.change_list) == 0:
+                if len(potential_move.move.change_list.property_name_value_tuple_list) == 0:
                     # It's free!
                     score = score + ColorsIntoColorsEvaluator.SCORE_ADJUST_FREE_MOVE
 
@@ -96,25 +100,20 @@ class ColorsIntoColorsEvaluator(Evaluator):
             potential_move = ColorsIntoColorsEvaluator.PotentialMove(move, score)
             self._destination_to_potential_move[destination_index] = potential_move
 
-    def apply_changes(self, destination, change_list):
-        for change in change_list:
+    @staticmethod
+    def apply_changes(source, destination, change_list):
+        for property_name_value_tuple in change_list.property_name_value_tuple_list:
             # Each change is a tuple of property name and params.
-            prop_name = change[0]
+            prop_name = property_name_value_tuple[0]
 
             # Get the value from the source and apply it to the dest.
-            src_val = self.source.properties.get_property(prop_name)
+            src_val = source.properties.get_property(prop_name)
             destination.properties.attempt_set_property(prop_name, src_val)
 
     @staticmethod
     def is_destination_empty(destination):
-        # A ColorEntry is considered empty if it has no properties set.
-        for prop_name in ColorEntry.sProperty_def_map.keys():
-            if destination.properties.get_property(prop_name) is not None:
-                # We're not empty if we have a property set
-                return False
-        
-        # We're empty!
-        return True
+        # Returns True if the ColorEntry has nothing set.
+        return destination.is_empty()
 
     def _get_changes_to_fit(self, destination):
         changes = []
@@ -188,18 +187,18 @@ class ColorsIntoColorsEvaluator(Evaluator):
                     # FAIL
                     return None
 
-        return changes
+        return ColorsIntoColorsEvaluator.ChangeList(changes)
 
     @staticmethod
     def _get_score_for_changes(change_list):
         score = 0
 
-        if len(change_list) == 0:
+        if len(change_list.property_name_value_tuple_list) == 0:
             # No changes means it's free.
             return -math.inf
 
         # Pay a cost for each move
-        for change in change_list:
+        for change in change_list.property_name_value_tuple_list:
             # Each change is a tuple of property name and params.
             change_key = change[0]
             cost = ColorsIntoColorsEvaluator.s_change_to_cost_map[change_key]

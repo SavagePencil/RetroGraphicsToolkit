@@ -116,8 +116,8 @@ def demo_flags():
         for move in solution:
             src_palette = move.dest_index
             change_list = move.change_list
-            for change in change_list:
-                color_index = change[0]
+            for color_into_color_move in change_list.color_into_color_moves:
+                color_index = color_into_color_move.dest_index
                 unique_color_tuple = (src_palette, color_index)
                 unique_colors.add(unique_color_tuple)
         
@@ -141,24 +141,33 @@ def demo_flags():
 
     # Pick a best solution and flatten it.
     solution = best_solutions[0]
-    for move in solution:
-        dest_pal_index = move.dest_index
-        dest_pal = dest_palette_list[dest_pal_index]
-        change_list = move.change_list
-        for change in change_list:
-            color_index = change[0]
+    solver.apply_solution(solution)
 
-            dest_color = dest_pal.colors[color_index]
+    print("Solution:")
+    for dest_palette_idx in range(len(dest_palette_list)):
+        print(f"\tPalette {dest_palette_idx}:")
+        palette = dest_palette_list[dest_palette_idx]
+        flattened_pal = palette.get_flattened_palette()
+        for color_idx in range(len(flattened_pal)):
+            print(f"\t\t{color_idx}: {flattened_pal[color_idx].properties.get_property(ColorEntry.PROPERTY_COLOR)}")
 
-            # Each change is a tuple of property name and params.
-            prop_name = change[0]
-            prop_val = change[1]
+        # Find all tiles mapped to this palette.
+        tiles_in_palette = []
+        for move in solution:
+            if dest_palette_idx == move.dest_index:
+                src_tile_idx = move.source_index
+                src_tile = src_tile_list[src_tile_idx]
+                tiles_in_palette.append(src_tile)
+        
+        print(f"\tTiles in Palette:")
+        if len(tiles_in_palette) == 0:
+            print(f"\t\tNone")
+        else:
+            for tile in tiles_in_palette:
+                print(f"\t\t{tile.name}")
 
-            dest_color.properties.attempt_set_property(prop_name, prop_val)
 
-    pal_idx = 0
-    #for palette in dest_palette_list:
-
+    print("Done!")
 
 
 

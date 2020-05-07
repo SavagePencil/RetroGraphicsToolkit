@@ -26,17 +26,19 @@ class Evaluator:
 
 class ConstraintSolver:
     def __init__(self, sources, destinations, evaluator_class):
-        self.instances = []
-
+        self.destinations = destinations
+        self.sources = sources
+        self._evaluator_class = evaluator_class
         self.solutions = []
 
         committed_moves = []
         unmapped_sources_bitset = BitSet(len(sources))
         unmapped_sources_bitset.set_all()
-        subset_solver = ConstraintSolver.SubsetSolver(self, sources, destinations, committed_moves, unmapped_sources_bitset, evaluator_class)
+        subset_solver = ConstraintSolver.SubsetSolver(self, sources, destinations, committed_moves, unmapped_sources_bitset, self._evaluator_class)
         self._wip_subset_solvers = []
         self._wip_subset_solvers.append(subset_solver)
 
+        # Create and start the state machine for this solver.
         self._fsm = FSM(self)
         self._fsm.start(ConstraintSolver.AssessCompletionState)
 
@@ -49,6 +51,20 @@ class ConstraintSolver:
 
     def update(self):
         self._fsm.update()
+
+    # Applies a solution provided by the constraint solver to the original destination.
+    # Returns a set of how sources are mapped to destinations.
+    def apply_solution(self, solution):
+        for move in solution:
+            source_index = move.source_index
+            source = self.sources[source_index]
+
+            dest_index = move.dest_index
+            destination = self.destinations[dest_index]
+
+            change_list = move.change_list
+
+            self._evaluator_class.apply_changes(source, destination, change_list)
 
     def _add_subset_solver(self, subset_solver):
         # Append this to our current list.
@@ -242,11 +258,16 @@ class ConstraintSolver:
 
             # Apply it
             source_index = move.source_index
-            dest_index = move.dest_index
-            change_list = move.change_list
-            destination = self._wip_solution_state[dest_index]
             evaluator = self._source_index_to_evaluator[source_index]
-            evaluator.apply_changes(destination, change_list)
+            source = evaluator.source
+
+            dest_index = move.dest_index
+            destination = self._wip_solution_state[dest_index]
+
+            change_list = move.change_list
+
+            # Call the static function to apply.
+            self._evaluator_class.apply_changes(source, destination, change_list)
 
             # Remove the source evaluator, as we are now mapped.
             del self._source_index_to_evaluator[move.source_index]
