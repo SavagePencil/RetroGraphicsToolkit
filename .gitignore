@@ -1512,3 +1512,8 @@ __pycache__/Tile.cpython-38.pyc
 __pycache__/TileIntoPaletteEvaluator.cpython-38.pyc
 __pycache__/TileSetIntoPaletteEvaluator.cpython-38.pyc
 __pycache__/TileSetToPaletteEvaluator.cpython-38.pyc
+__pycache__/ColorRemap.cpython-38.pyc
+__pycache__/ColorRemapsIntoStagingPalettesEvaluator.cpython-38.pyc
+__pycache__/FinalPalette.cpython-38.pyc
+__pycache__/PixelArray.cpython-38.pyc
+__pycache__/StagingPalette.cpython-38.pyc

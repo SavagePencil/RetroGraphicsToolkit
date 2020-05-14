@@ -1,14 +1,14 @@
 import math
 from constraint_solver import ConstraintSolver, Evaluator, Move
 from ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
-from Tile import Tile
-from Palette import Palette
+from ColorRemap import ColorRemap
+from StagingPalette import StagingPalette
 
-class TileSetIntoPaletteEvaluator(Evaluator):
+class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
     # Static Vars
     SCORE_ADJUST_ONLY_ONE_MOVE = -10000
     SCORE_ADJUST_FREE_MOVE = -math.inf
-    SCORE_ADJUST_EACH_COLOR_IN_TILE = -1
+    SCORE_ADJUST_EACH_COLOR_IN_REMAP = -1
     SCORE_ADJUST_EACH_COLOR_MATCHING = -100
 
     class PotentialMove:
@@ -18,19 +18,19 @@ class TileSetIntoPaletteEvaluator(Evaluator):
 
     class ChangeList:
         def __init__(self, color_into_color_moves):
-            # We keep a list of moves for our tile's colors into the dest palette.
+            # We keep a list of moves for our color remap's colors into the dest palette.
             self.color_into_color_moves = color_into_color_moves
 
     @classmethod
     def factory_constructor(cls, source_index, source):
-        return TileSetIntoPaletteEvaluator(source_index, source)
+        return ColorRemapsIntoStagingPalettesEvaluator(source_index, source)
 
     def __init__(self, source_index, source):
         super().__init__(source_index, source)
 
         # Create a map of destinations to possible moves.
         # This isn't 1:1, as there can be multiple ways for a
-        # tile to be moved into a given palette.
+        # set of colors to be moved into a given palette.
         self._destination_to_potential_move_list = {}
 
     def get_list_of_best_moves(self):
@@ -56,16 +56,16 @@ class TileSetIntoPaletteEvaluator(Evaluator):
                     # Check for special conditions.
                     # Is this our only move?
                     if only_one_move == True:
-                        score = score + TileSetIntoPaletteEvaluator.SCORE_ADJUST_ONLY_ONE_MOVE
+                        score = score + ColorRemapsIntoStagingPalettesEvaluator.SCORE_ADJUST_ONLY_ONE_MOVE
 
                     # Are there no changes to make this move?
                     if len(potential_move.move.change_list.color_into_color_moves) == 0:
                         # It's free!
-                        score = score + TileSetIntoPaletteEvaluator.SCORE_ADJUST_FREE_MOVE
+                        score = score + ColorRemapsIntoStagingPalettesEvaluator.SCORE_ADJUST_FREE_MOVE
 
-                    # How many colors are in our tile?
-                    num_colors = len(self.source.color_map.get_entries())
-                    score = score + (num_colors * TileSetIntoPaletteEvaluator.SCORE_ADJUST_EACH_COLOR_IN_TILE)
+                    # How many colors are in our remap?
+                    num_colors = len(self.source.color_entries)
+                    score = score + (num_colors * ColorRemapsIntoStagingPalettesEvaluator.SCORE_ADJUST_EACH_COLOR_IN_REMAP)
 
                     if score < best_score:
                         best_score = score
@@ -95,9 +95,9 @@ class TileSetIntoPaletteEvaluator(Evaluator):
             for change_list in change_lists:
                 move = Move(self.source_index, destination_index, change_list)
 
-                score = TileSetIntoPaletteEvaluator._get_score_for_changes(change_list)
+                score = ColorRemapsIntoStagingPalettesEvaluator._get_score_for_changes(change_list)
 
-                potential_move = TileSetIntoPaletteEvaluator.PotentialMove(move, score)
+                potential_move = ColorRemapsIntoStagingPalettesEvaluator.PotentialMove(move, score)
                 potential_move_list.append(potential_move)
 
             self._destination_to_potential_move_list[destination_index] = potential_move_list
@@ -107,13 +107,12 @@ class TileSetIntoPaletteEvaluator(Evaluator):
         # This class doesn't apply any changes to the Palette object itself.
 
         # Apply our ColorsIntoColors changes, which is a list of Moves.
-        tile_colors = list(source.color_map.get_entries())
         for color_into_color_move in change_list.color_into_color_moves:
             src_color_idx = color_into_color_move.source_index
-            src_color = tile_colors[src_color_idx]
+            src_color = source.color_entries[src_color_idx]
 
             dest_palette_color_idx = color_into_color_move.dest_index
-            dest_palette_color = destination.colors[dest_palette_color_idx]
+            dest_palette_color = destination.color_entries[dest_palette_color_idx]
 
             color_into_color_change_list = color_into_color_move.change_list
             ColorsIntoColorsEvaluator.apply_changes(src_color, dest_palette_color, color_into_color_change_list)
@@ -124,17 +123,16 @@ class TileSetIntoPaletteEvaluator(Evaluator):
         return False
 
     def _get_changes_to_fit(self, destination):
-        # Check this tile to see if it has a palette assigned.  If it does, does it match the destination?
-        assigned_palette = self.source.properties.get_property(Tile.PROPERTY_PALETTE)
+        # Check this remap to see if it has a palette assigned.  If it does, does it match the destination?
+        assigned_palette = self.source.get_property(ColorRemap.PROPERTY_PALETTE)
         if (assigned_palette is not None) and (assigned_palette != destination):
-            # We have a tile that wants to be assigned to a specific palette, and it's not this one.
+            # We have a remap that wants to be assigned to a specific palette, and it's not this one.
             return None
 
-        # Take the colors in the source tile and execute a solver to map them to the palette's colors.
-        tile_colors = list(self.source.color_map.get_entries())
-        palette_colors = destination.colors
+        # Take the colors in the source and execute a solver to map them to the palette's colors.
+        palette_colors = destination.color_entries
 
-        solver = ConstraintSolver(tile_colors, palette_colors, ColorsIntoColorsEvaluator)
+        solver = ConstraintSolver(self.source.color_entries, palette_colors, ColorsIntoColorsEvaluator)
         while solver.is_complete() == False:
             solver.update()
 
@@ -145,10 +143,10 @@ class TileSetIntoPaletteEvaluator(Evaluator):
             return None
         
         change_lists = []
-        # Each solution is a possible way to fit the tile into the palette
+        # Each solution is a possible way to fit the remap into the palette
         for solution in solutions:
             # A solution is just a list of Moves.  Make each solution into its own ChangeList.
-            change_list = TileSetIntoPaletteEvaluator.ChangeList(solution)
+            change_list = ColorRemapsIntoStagingPalettesEvaluator.ChangeList(solution)
             change_lists.append(change_list)
 
         return change_lists
@@ -162,6 +160,6 @@ class TileSetIntoPaletteEvaluator(Evaluator):
             # Go through each color-into-color move.
             property_name_value_tuple_list = color_into_color_move.change_list.property_name_value_tuple_list
             if len(property_name_value_tuple_list) == 0:
-                score = score + TileSetIntoPaletteEvaluator.SCORE_ADJUST_EACH_COLOR_MATCHING
+                score = score + ColorRemapsIntoStagingPalettesEvaluator.SCORE_ADJUST_EACH_COLOR_MATCHING
 
         return score

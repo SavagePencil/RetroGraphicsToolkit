@@ -8,6 +8,10 @@ from ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
 from TileSetIntoPaletteEvaluator import TileSetIntoPaletteEvaluator
 from PIL import Image
 from PixelArray import PixelArray
+from ColorRemap import ColorRemap
+from StagingPalette import StagingPalette
+from ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
+from FinalPalette import FinalPalette
 
 def demo_flags():
 
@@ -237,73 +241,66 @@ def demo_font():
     ##############################################################################
     # PIXEL ARRAYS
     parent_image = Image.open("font.png").convert("RGB")
-    pixel_arrays = []
-    unique_color_lists = []
-    remapped_color_lists = []
-    tile_width = 8
-    tile_height = 8
-    start_y = 0
-    start_x = 0
+    color_remaps = []
+
     # Font comes in as green.  Remap to white.
-    special_color_remap = {(0,255,0):(255,255,255)}
+    white_entry = ColorEntry()
+    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,255,255))
+    special_color_remap = {(0,255,0): white_entry}
 
-    # Chop out each pixel array from the larger image.
-    for y in range(start_y, parent_image.height, tile_height):
-        for x in range(start_x, parent_image.width, tile_width):
-            px_array = PixelArray(parent_image, x, y, tile_width, tile_height)
-            px_array.quantize(8, 2)
-            pixel_arrays.append(px_array)
+    # Treat the image as one large color remapping problem.  We'll divvy up into tiles later.
+    px_array = PixelArray(parent_image, 0, 0, parent_image.width, parent_image.height)
+    px_array.quantize((8,8,8), (2,2,2))
 
-            # Extract all unique colors
-            curr_index = 0
-            pixel_color_to_unique_index = {}
-            unique_color_list = []
-            for pixel_color in px_array.pixels:
-                if pixel_color not in pixel_color_to_unique_index:
-                    # This is a new, unique color.
-                    pixel_color_to_unique_index[pixel_color] = curr_index
-                    curr_index = curr_index + 1
-                    unique_color_list.append(pixel_color)
-            
-            unique_color_lists.append(unique_color_list)
+    # Extract all unique colors
+    pixel_value_set = set()
+    unique_pixel_values_list = []
 
-            # Now see which ones need to be remapped
-            remapped_color_list = []
-            for unique_color in unique_color_list:
-                if unique_color in special_color_remap:
-                    # Remapped.
-                    remapped_color = special_color_remap[unique_color]
-                    remapped_color_list.append(remapped_color)
-                else:
-                    # Keep it as-is.
-                    remapped_color_list.append(unique_color)
-
-            remapped_color_lists.append(remapped_color_list)
+    for pixel_value in px_array.pixels:
+        if pixel_value not in pixel_value_set:
+            # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
+            unique_pixel_values_list.append(pixel_value)
+            # Add it to the set for faster lookup (but it won't have a deterministic order).
+            pixel_value_set.add(pixel_value)
+    
+    color_remap = ColorRemap({}, unique_pixel_values_list, special_color_remap)
+    color_remaps.append(color_remap)
 
     ##############################################################################
     # STAGING PALETTES
     staging_palettes = []
-    staging_palette_bg_only = []
-    staging_palette_sprites = []
-    num_entries = 16
+    staging_palette_bg_only = StagingPalette(16)
+    staging_palette_sprites = StagingPalette(16)
 
-    while num_entries > 0:
-        staging_palette_bg_only.append(ColorEntry())
-        staging_palette_sprites.append(ColorEntry())
-        num_entries = num_entries - 1
-    
     staging_palettes.append(staging_palette_bg_only)
     staging_palettes.append(staging_palette_sprites)
 
-    # TODO:  CHANGE CONSTRAINT SOLVER TO WORK ON ARRAY OF REMAPPED COLORS INTO STAGING PALETTES
-
-    solver = ConstraintSolver(remapped_color_lists, staging_palettes, TileSetIntoPaletteEvaluator)
-    while solver.is_complete() == False:
-        solver.update()
+    ##############################################################################
+    # SOLUTION FOR COLOR REMAPS -> STAGING PALETTES
+    remap_to_staging_solver = ConstraintSolver(color_remaps, staging_palettes, ColorRemapsIntoStagingPalettesEvaluator)
+    while remap_to_staging_solver.is_complete() == False:
+        remap_to_staging_solver.update()
 
     # TODO find the best one.
-    solution = solver.solutions[0]
+    remap_to_staging_solution = remap_to_staging_solver.solutions[0]
+
+    for move in remap_to_staging_solution:
+        # Let the corresponding color remap process these moves.
+        source_remap = color_remaps[move.source_index]
+        source_remap.remap_to_staging_palette(move, staging_palettes)
+
+    ##############################################################################
+    # FINAL PALETTES
+    final_palettes = []
+    final_palette_bg_only = FinalPalette(16)
+    final_palette_sprites = FinalPalette(16)
     
+    final_palettes.append(final_palette_bg_only)
+    final_palettes.append(final_palette_sprites)
+    
+    ##############################################################################
+    # SOLUTION FOR STAGING -> FINAL PALETTES
+
 
 
 demo_colors()

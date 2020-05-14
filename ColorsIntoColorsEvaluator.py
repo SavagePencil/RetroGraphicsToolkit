@@ -67,11 +67,11 @@ class ColorsIntoColorsEvaluator(Evaluator):
                     # It's free!
                     score = score + ColorsIntoColorsEvaluator.SCORE_ADJUST_FREE_MOVE
 
-                if potential_move.base_score < best_score:
+                if score < best_score:
                     best_score = score
                     best_moves.clear()
                     best_moves.append(potential_move.move)
-                elif potential_move.base_score == best_score:
+                elif score == best_score:
                     best_moves.append(potential_move.move)
 
         return (best_score, best_moves)
