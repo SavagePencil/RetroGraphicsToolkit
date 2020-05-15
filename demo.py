@@ -289,6 +289,9 @@ def demo_font():
         source_remap = color_remaps[move.source_index]
         source_remap.remap_to_staging_palette(move, staging_palettes)
 
+    # Now apply the solution to the staging palettes.
+    remap_to_staging_solver.apply_solution(remap_to_staging_solution)
+
     ##############################################################################
     # FINAL PALETTES
     final_palettes = []
@@ -299,17 +302,46 @@ def demo_font():
     final_palettes.append(final_palette_sprites)
     
     ##############################################################################
-    # SOLUTION FOR STAGING -> FINAL PALETTES
+    # CREATE MAPPING OF STAGING -> FINAL PALETTES
     stage_to_final_maps = []
     for palette_idx in range(len(staging_palettes)):
-        stage_to_final_map = {}
-
         # Each staging palette corresponds to one final palette.
         staging_palette = staging_palettes[palette_idx]
         final_palette = final_palettes[palette_idx]
 
-        # Perform a solve on each.
+        stage_to_final_map = staging_palette.create_final_palette_mapping()
+        stage_to_final_maps.append(stage_to_final_map)
 
+        # Assign the pixel values from the map.
+        for stage_idx, final_idx in stage_to_final_map.items():
+            color_entry = staging_palette.color_entries[stage_idx]
+            pixel_value = color_entry.properties.get_property(ColorEntry.PROPERTY_COLOR)
+            final_palette.final_pixels[final_idx].attempt_write_pixel_value(pixel_value)
+
+    ##############################################################################
+    # APPLY STAGING -> FINAL TO REMAPS
+    for color_remap in color_remaps:
+        # Find the staging palette in the list of palettes
+        palette_idx = None
+        remap_staging_palette = color_remap.staging_palette
+        for staging_palette_idx in range(len(staging_palettes)):
+            if remap_staging_palette is staging_palettes[staging_palette_idx]:
+                # Found it.
+                palette_idx = staging_palette_idx
+                break
+
+        # Assign the final palette.
+        final_palette = final_palettes[palette_idx]
+        color_remap.final_palette = final_palette
+    
+        # Now do the staging -> final index mapping.
+        stage_to_final_map = stage_to_final_maps[palette_idx]
+        for color_idx in range(len(color_remap.staging_palette_indices)):
+            staging_idx = color_remap.staging_palette_indices[color_idx]
+            final_idx = stage_to_final_map[staging_idx]
+            color_remap.final_palette_indices[color_idx] = final_idx
+
+    print("Done!")
 
 
 #demo_colors()
