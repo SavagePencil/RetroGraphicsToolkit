@@ -6,6 +6,7 @@ class FinalPalette:
         self.final_pixels = []
         while num_slots > 0:
             self.final_pixels.append(FinalPixel())
+            num_slots = num_slots - 1
 
 
 class FinalPixel:

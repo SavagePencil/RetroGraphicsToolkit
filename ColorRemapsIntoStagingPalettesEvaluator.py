@@ -132,7 +132,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
         # Take the colors in the source and execute a solver to map them to the palette's colors.
         palette_colors = destination.color_entries
 
-        solver = ConstraintSolver(self.source.color_entries, palette_colors, ColorsIntoColorsEvaluator)
+        solver = ConstraintSolver(self.source.color_entries, palette_colors, ColorsIntoColorsEvaluator, None)
         while solver.is_complete() == False:
             solver.update()
 

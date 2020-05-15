@@ -107,7 +107,7 @@ def demo_flags():
     dest_palette_list.append(palette_A)
     dest_palette_list.append(palette_B)
 
-    solver = ConstraintSolver(src_tile_list, dest_palette_list, TileSetIntoPaletteEvaluator)
+    solver = ConstraintSolver(src_tile_list, dest_palette_list, TileSetIntoPaletteEvaluator, True)
     while solver.is_complete() == False:
         solver.update()
 
@@ -227,7 +227,7 @@ def demo_colors():
     dest_node_list.append(dest_clear_2)
 
     # Start the solver.
-    solver = ConstraintSolver(source_node_list, dest_node_list, ColorsIntoColorsEvaluator)
+    solver = ConstraintSolver(source_node_list, dest_node_list, ColorsIntoColorsEvaluator, True)
 
     while False == solver.is_complete():
         solver.update()
@@ -277,7 +277,7 @@ def demo_font():
 
     ##############################################################################
     # SOLUTION FOR COLOR REMAPS -> STAGING PALETTES
-    remap_to_staging_solver = ConstraintSolver(color_remaps, staging_palettes, ColorRemapsIntoStagingPalettesEvaluator)
+    remap_to_staging_solver = ConstraintSolver(color_remaps, staging_palettes, ColorRemapsIntoStagingPalettesEvaluator, True)
     while remap_to_staging_solver.is_complete() == False:
         remap_to_staging_solver.update()
 
@@ -300,11 +300,20 @@ def demo_font():
     
     ##############################################################################
     # SOLUTION FOR STAGING -> FINAL PALETTES
+    stage_to_final_maps = []
+    for palette_idx in range(len(staging_palettes)):
+        stage_to_final_map = {}
+
+        # Each staging palette corresponds to one final palette.
+        staging_palette = staging_palettes[palette_idx]
+        final_palette = final_palettes[palette_idx]
+
+        # Perform a solve on each.
 
 
 
-demo_colors()
+#demo_colors()
 
-demo_flags()
+#demo_flags()
 
 demo_font()

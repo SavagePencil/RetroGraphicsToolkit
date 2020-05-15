@@ -25,7 +25,7 @@ class Evaluator:
 
 
 class ConstraintSolver:
-    def __init__(self, sources, destinations, evaluator_class):
+    def __init__(self, sources, destinations, evaluator_class, debugging):
         self.destinations = destinations
         self.sources = sources
         self._evaluator_class = evaluator_class
@@ -34,7 +34,7 @@ class ConstraintSolver:
         committed_moves = []
         unmapped_sources_bitset = BitSet(len(sources))
         unmapped_sources_bitset.set_all()
-        subset_solver = ConstraintSolver.SubsetSolver(self, sources, destinations, committed_moves, unmapped_sources_bitset, self._evaluator_class)
+        subset_solver = ConstraintSolver.SubsetSolver(self, sources, destinations, committed_moves, unmapped_sources_bitset, self._evaluator_class, 0, debugging)
         self._wip_subset_solvers = []
         self._wip_subset_solvers.append(subset_solver)
 
@@ -137,9 +137,15 @@ class ConstraintSolver:
         pass
 
     class SubsetSolver:
-        def __init__(self, parent_solver, sources, wip_solution_state, committed_moves, unmapped_sources_bitset, evaluator_class):
+        def __init__(self, parent_solver, sources, wip_solution_state, committed_moves, unmapped_sources_bitset, evaluator_class, indent_level, debugging):
             # Store our parent solver, so that we can alert them when done.
             self._parent_solver = parent_solver
+
+            # Store our indent level so that we can trace debug properly.
+            self.indent_level = indent_level
+
+            # Remember what type of debugging we're doing.
+            self.debugging = debugging
 
             # Store our evaluator class, so that we can construct them appropriately.
             self._evaluator_class = evaluator_class
@@ -191,6 +197,16 @@ class ConstraintSolver:
             # If no unmapped sources remain, flag success
             if len(self._source_index_to_evaluator.values()) == 0:
                 # We're done, successfully!
+
+                # Emit debugging.
+                if self.debugging is not None:
+                    indent_str = self.indent_level * '\t'
+                    moves_str = ""
+                    for move in self._committed_moves:
+                        moves_str = moves_str + (f" ({move.source_index} -> {move.dest_index})")
+
+                    print(f"{indent_str}{self.__hash__()}: Completed Successfully:{moves_str}")
+
                 raise ConstraintSolver.AllItemsMappedSuccessfully()
 
             # If we have dirty destinations, update each node to alert them.
@@ -220,6 +236,12 @@ class ConstraintSolver:
 
                 if len(moves) == 0:
                     # No moves?  We've failed.
+
+                    # Emit debugging.
+                    if self.debugging is not None:
+                        indent_str = self.indent_level * '\t'
+                        print(f"{indent_str}{self.__hash__()}: FAILED.  No moves available.")
+
                     raise ConstraintSolver.SolverFailed_NoMovesAvailableError()
 
                 if score < best_score:
@@ -239,20 +261,42 @@ class ConstraintSolver:
                 # Otherwise, fork the state for other possibilities.
                 first_move = best_moves.pop()
 
+                subsets = []
                 for alt_best_move in best_moves:
-                    # Create alternate subsets to solve these.
-                    subset = ConstraintSolver.SubsetSolver(self._parent_solver, self._sources, self._wip_solution_state, self._committed_moves, self._unmapped_sources_bitset, self._evaluator_class)
+                    # Create alternate subsets to solve the other moves.
+                    subset = ConstraintSolver.SubsetSolver(self._parent_solver, self._sources, self._wip_solution_state, self._committed_moves, self._unmapped_sources_bitset, self._evaluator_class, self.indent_level + 1, self.debugging)
+                    subsets.append(subset)
 
+                # Execute our own move on ourselves now.
+                self._execute_move(first_move)
+
+                # Emit debugging.
+                if self.debugging is not None:
+                    indent_str = self.indent_level * '\t'
+                    subsets_str = ""
+                    for subset in subsets:
+                        subsets_str = subsets_str + f" {subset.__hash__()}"
+                    print(f"{indent_str}{self.__hash__()}: Created {len(best_moves)} alternate solvers to evaluate: {subsets_str}")
+
+                for subset_idx in range(len(subsets)):
+                    # Now execute the remaining moves on the subsets
+                    subset = subsets[subset_idx]
+                    alt_best_move = best_moves[subset_idx]
                     # Execute the move
                     subset._execute_move(alt_best_move)
 
                     # Add it to the solver to figure out.
-                    self._parent_solver._add_subset_solver(subset)
-                
-                # Execute our own move on ourselves now.
-                self._execute_move(first_move)
+                    self._parent_solver._add_subset_solver(subset)                
+
+            # Increment our indent level
+            self.indent_level = self.indent_level + 1
 
         def _execute_move(self, move):
+            # Emit debugging.
+            if self.debugging is not None:
+                indent_str = self.indent_level * '\t'
+                print(f"{indent_str}{self.__hash__()}: Move {move.source_index} to {move.dest_index}.")
+
             # Record it
             self._committed_moves.append(move)
 
@@ -279,11 +323,17 @@ class ConstraintSolver:
             # If this index was once an empty, flag a new one as the available one.
             # Remember:  we only ever want ONE empty at any given time.
             if self._empty_destinations_bitset.is_set(dest_index):
-                # Clear current one.
-                self._empty_destinations_bitset.set_bit(dest_index)
+                # Clear current one, but ONLY if we've verified that it is no longer empty
+                # (we don't allow moves that leave a destination empty, as that could lead
+                # to a source being improperly mapped to a dest).
+                if self._evaluator_class.is_destination_empty(destination):
+                    raise Exception("Destination was left empty after a move, which may lead to incorrect assignment.")
+                else:
+                    # Destination is actually empty.
+                    self._empty_destinations_bitset.set_bit(dest_index)
 
-                # Can we find another one?
-                next_empty = self._empty_destinations_bitset.get_next_set_bit_index(dest_index + 1)
-                if next_empty is not None:
-                    # Mark it as dirty so that we can evaluate it as a possible move destination.
-                    self._dirty_destination_indices_bitset.set_bit(next_empty)
+                    # Can we find another one?
+                    next_empty = self._empty_destinations_bitset.get_next_set_bit_index(dest_index + 1)
+                    if next_empty is not None:
+                        # Mark it as dirty so that we can evaluate it as a possible move destination.
+                        self._dirty_destination_indices_bitset.set_bit(next_empty)
