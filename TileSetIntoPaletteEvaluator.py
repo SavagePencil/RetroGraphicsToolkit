@@ -134,7 +134,7 @@ class TileSetIntoPaletteEvaluator(Evaluator):
         tile_colors = list(self.source.color_map.get_entries())
         palette_colors = destination.colors
 
-        solver = ConstraintSolver(tile_colors, palette_colors, ColorsIntoColorsEvaluator)
+        solver = ConstraintSolver(tile_colors, palette_colors, ColorsIntoColorsEvaluator, None)
         while solver.is_complete() == False:
             solver.update()
 
