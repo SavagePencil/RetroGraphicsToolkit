@@ -263,8 +263,8 @@ def demo_font():
             # Add it to the set for faster lookup (but it won't have a deterministic order).
             pixel_value_set.add(pixel_value)
     
-    color_remap = ColorRemap({}, unique_pixel_values_list, special_color_remap)
-    color_remaps.append(color_remap)
+    color_remap_font = ColorRemap({}, unique_pixel_values_list, special_color_remap)
+    color_remaps.append(color_remap_font)
 
     ##############################################################################
     # STAGING PALETTES
@@ -340,6 +340,27 @@ def demo_font():
             staging_idx = color_remap.staging_palette_indices[color_idx]
             final_idx = stage_to_final_map[staging_idx]
             color_remap.final_palette_indices[color_idx] = final_idx
+
+    ##############################################################################
+    # CONVERT TO INDEXED PATTERNS
+    pattern_width = 8
+    pattern_height = 8
+    start_x = 8
+    start_y = 8
+
+    pattern = []
+    for y in range(start_y, start_y + pattern_height):
+        for x in range(start_x, start_x + pattern_width):
+            pixel_value = px_array.get_pixel_value(x, y)
+
+            # Find corresponding index.
+            color_index = color_remap_font.source_pixel_value_to_index[pixel_value]
+
+            # Find final palette slot.
+            final_palette_slot = color_remap_font.final_palette_indices[color_index]
+
+            pattern.append(final_palette_slot)
+
 
     print("Done!")
 

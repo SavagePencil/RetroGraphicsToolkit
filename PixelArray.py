@@ -2,8 +2,8 @@ import Quantize
 
 class PixelArray:
     def __init__(self, src_img, src_x, src_y, width, height):
-        self._width = width
-        self._height = height
+        self.width = width
+        self.height = height
 
         self.pixels = []
 
@@ -11,6 +11,10 @@ class PixelArray:
             for col in range(src_x, src_x + width):
                 pixel = src_img.getpixel((col, row))
                 self.pixels.append(pixel)
+
+    def get_pixel_value(self, x, y):
+        idx = (y * self.width) + x
+        return self.pixels[idx]
 
     def quantize(self, src_bpp, target_bpp):
         src_maxes = tuple([2**bpp for bpp in src_bpp])
