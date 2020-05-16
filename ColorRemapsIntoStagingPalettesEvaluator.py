@@ -88,7 +88,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
         # In either event, start by assuming we won't get this to fit.
         self._destination_to_potential_move_list[destination_index] = None
 
-        change_lists = self._get_changes_to_fit(destination)
+        change_lists = self._get_changes_to_fit(destination_index, destination)
         if (change_lists is not None) and (len(change_lists) > 0):
             # We can make moves!
             potential_move_list = []
@@ -122,10 +122,10 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
         # Palettes are always instantiated.
         return False
 
-    def _get_changes_to_fit(self, destination):
+    def _get_changes_to_fit(self, destination_index, destination):
         # Check this remap to see if it has a palette assigned.  If it does, does it match the destination?
         assigned_palette = self.source.get_property(ColorRemap.PROPERTY_PALETTE)
-        if (assigned_palette is not None) and (assigned_palette != destination):
+        if (assigned_palette is not None) and (assigned_palette != destination_index):
             # We have a remap that wants to be assigned to a specific palette, and it's not this one.
             return None
 

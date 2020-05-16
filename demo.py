@@ -12,6 +12,7 @@ from ColorRemap import ColorRemap
 from StagingPalette import StagingPalette
 from ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
 from FinalPalette import FinalPalette
+import Quantize
 
 def demo_flags():
 
@@ -239,6 +240,15 @@ def demo_colors():
 
 def demo_font():
     ##############################################################################
+    # STAGING PALETTES
+    staging_palettes = []
+    staging_palette_bg_only = StagingPalette(16)
+    staging_palette_sprites = StagingPalette(16)
+
+    staging_palettes.append(staging_palette_bg_only)
+    staging_palettes.append(staging_palette_sprites)
+
+    ##############################################################################
     # PIXEL ARRAYS
     parent_image = Image.open("font.png").convert("RGB")
     color_remaps = []
@@ -246,6 +256,8 @@ def demo_font():
     # Font comes in as green.  Remap to white.
     white_entry = ColorEntry()
     white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,255,255))
+    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_SLOT, 7)
+    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_FORCED_PALETTE, 1)
     special_color_remap = {(0,255,0): white_entry}
 
     # Treat the image as one large color remapping problem.  We'll divvy up into tiles later.
@@ -265,15 +277,6 @@ def demo_font():
     
     color_remap_font = ColorRemap({}, unique_pixel_values_list, special_color_remap)
     color_remaps.append(color_remap_font)
-
-    ##############################################################################
-    # STAGING PALETTES
-    staging_palettes = []
-    staging_palette_bg_only = StagingPalette(16)
-    staging_palette_sprites = StagingPalette(16)
-
-    staging_palettes.append(staging_palette_bg_only)
-    staging_palettes.append(staging_palette_sprites)
 
     ##############################################################################
     # SOLUTION FOR COLOR REMAPS -> STAGING PALETTES
@@ -318,6 +321,17 @@ def demo_font():
             pixel_value = color_entry.properties.get_property(ColorEntry.PROPERTY_COLOR)
             final_palette.final_pixels[final_idx].attempt_write_pixel_value(pixel_value)
 
+        # Print each palette.
+        print(f"Palette {palette_idx}:")
+        for final_pixel_idx in range(len(final_palette.final_pixels)):
+            final_pixel = final_palette.final_pixels[final_pixel_idx]
+            pixel_value = final_pixel.get_pixel_value()
+            if pixel_value is not None:
+                # Quantize it from 8 bits per channel (RGB) to 2 bits per channel (SMS)
+                quantized_pixel_value = Quantize.quantize_tuple_to_target(pixel_value, (2**8,2**8,2**8), (2**2,2**2,2**2))
+                print(f"  {final_pixel_idx}: RGB: {pixel_value} / Quantized: {quantized_pixel_value}")
+
+
     ##############################################################################
     # APPLY STAGING -> FINAL TO REMAPS
     for color_remap in color_remaps:
@@ -345,22 +359,63 @@ def demo_font():
     # CONVERT TO INDEXED PATTERNS
     pattern_width = 8
     pattern_height = 8
-    start_x = 8
-    start_y = 8
+    patterns_indexed = []
 
-    pattern = []
-    for y in range(start_y, start_y + pattern_height):
-        for x in range(start_x, start_x + pattern_width):
-            pixel_value = px_array.get_pixel_value(x, y)
+    for start_y in range(0, px_array.height, pattern_height):
+        for start_x in range(0, px_array.width, pattern_width):
+            # Carve out each pattern.
+            pattern = []
+            for y in range(start_y, start_y + pattern_height):
+                for x in range(start_x, start_x + pattern_width):
+                    pixel_value = px_array.get_pixel_value(x, y)
 
-            # Find corresponding index.
-            color_index = color_remap_font.source_pixel_value_to_index[pixel_value]
+                    # Find corresponding index.
+                    color_index = color_remap_font.source_pixel_value_to_index[pixel_value]
 
-            # Find final palette slot.
-            final_palette_slot = color_remap_font.final_palette_indices[color_index]
+                    # Find final palette slot.
+                    final_palette_slot = color_remap_font.final_palette_indices[color_index]
 
-            pattern.append(final_palette_slot)
+                    pattern.append(final_palette_slot)
 
+            patterns_indexed.append(pattern)
+
+    ##############################################################################
+    # CONVERT TO 1BPP PATTERNS
+    pattern_width = 8
+    pattern_height = 8
+    patterns_1bpp = []
+    color_indices_1bpp = []
+
+    # Get the "0s" color
+    color_indices_1bpp.append(color_remap_font.final_palette_indices[0])
+    # Get the "1s" color
+    color_indices_1bpp.append(color_remap_font.final_palette_indices[1])
+
+    for start_y in range(0, px_array.height, pattern_height):
+        for start_x in range(0, px_array.width, pattern_width):
+            # Carve out each pattern.
+            pattern = []
+            for y in range(start_y, start_y + pattern_height):
+                byte_value = 0
+                for x in range(start_x, start_x + pattern_width):
+                    pixel_value = px_array.get_pixel_value(x, y)
+
+                    # Find corresponding index.
+                    color_index = color_remap_font.source_pixel_value_to_index[pixel_value]
+
+                    if color_index == 0:
+                        # Just shift
+                        byte_value = byte_value << 1
+                    elif color_index == 1:
+                        # Shift, then OR in a 1 bit.
+                        byte_value = byte_value << 1
+                        byte_value = byte_value | 1
+                    else:
+                        raise Exception("Attempted to convert image to 1bpp, but it had a color index that wasn't 0 or 1!")
+
+                pattern.append(byte_value)
+    
+            patterns_1bpp.append(pattern)
 
     print("Done!")
 

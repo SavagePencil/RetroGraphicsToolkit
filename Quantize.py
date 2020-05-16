@@ -26,7 +26,7 @@ def quantize_tuple_to_source(val_tuple, src_max_tuple, target_max_tuple):
 def quantize_tuple_to_target(val_tuple, src_max_tuple, target_max_tuple):
     quantized_list = []
 
-    for i in range(src_max_tuple.len()):
+    for i in range(len(src_max_tuple)):
         src_max = src_max_tuple[i]
         target_max = target_max_tuple[i]
 
