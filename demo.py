@@ -1,182 +1,14 @@
 import math
+from PIL import Image
 from ColorEntry import ColorEntry
-from Tile import Tile
-from ColorMap import ColorMap
-from Palette import Palette
 from constraint_solver import ConstraintSolver
 from ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
-from TileSetIntoPaletteEvaluator import TileSetIntoPaletteEvaluator
-from PIL import Image
 from PixelArray import PixelArray
 from ColorRemap import ColorRemap
 from StagingPalette import StagingPalette
 from ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
 from FinalPalette import FinalPalette
 import Quantize
-
-def demo_flags():
-
-    ##############################################################################
-    # PALETTES
-    palette_A = Palette(5)
-    palette_B = Palette(5)
-
-    ##############################################################################
-    # GLOBAL COLORS
-    clear_color = ColorEntry()
-    clear_color.properties.attempt_set_property(ColorEntry.PROPERTY_NAME, "Clear")
-    clear_color.properties.attempt_set_property(ColorEntry.PROPERTY_FORCED_PALETTE, palette_B)
-    clear_color.properties.attempt_set_property(ColorEntry.PROPERTY_SLOT, 0)
-
-    special_color_remaps = {}
-        
-    ##############################################################################
-    # TILES
-    # USA
-    color_map_USA = ColorMap(special_color_remaps)
-    color_map_USA.add_color("red")
-    color_map_USA.add_color("white")
-    color_map_USA.add_color("blue")
-
-    tile_USA = Tile("USA", color_map_USA)
-
-    # ITA
-    color_map_ITA = ColorMap(special_color_remaps)
-    color_map_ITA.add_color("red")
-    color_map_ITA.add_color("white")
-    color_map_ITA.add_color("green")
-
-    tile_ITA = Tile("ITA", color_map_ITA)
-
-    # LIT
-    color_map_LIT = ColorMap(special_color_remaps)
-    color_map_LIT.add_color("yellow")
-    color_map_LIT.add_color("green")
-    color_map_LIT.add_color("red")
-
-    tile_LIT = Tile("LIT", color_map_LIT)
-
-    # PAL
-    color_map_PAL = ColorMap(special_color_remaps)
-    color_map_PAL.add_color("light blue")
-    color_map_PAL.add_color("yellow")
-
-    tile_PAL = Tile("PAL", color_map_PAL)
-
-    # CAN
-    color_map_CAN = ColorMap(special_color_remaps)
-    color_map_CAN.add_color("red")
-    color_map_CAN.add_color("white")
-
-    tile_CAN = Tile("CAN", color_map_CAN)
-
-    # FIN
-    color_map_FIN = ColorMap(special_color_remaps)
-    color_map_FIN.add_color("blue")
-    color_map_FIN.add_color("white")
-
-    tile_FIN = Tile("FIN", color_map_FIN)
-
-    # MIC
-    color_map_MIC = ColorMap(special_color_remaps)
-    color_map_MIC.add_color("light blue")
-    color_map_MIC.add_color("white")
-
-    tile_MIC = Tile("MIC", color_map_MIC)
-
-    # CHN
-    color_map_CHN = ColorMap(special_color_remaps)
-    color_map_CHN.add_color("red")
-    color_map_CHN.add_color("yellow")
-
-    tile_CHN = Tile("CHN", color_map_CHN)
-
-    ##############################################################################
-    # SOLVER INIT
-    src_tile_list = []
-
-    src_tile_list.append(tile_USA)
-    src_tile_list.append(tile_ITA)
-    src_tile_list.append(tile_LIT)
-    src_tile_list.append(tile_PAL)
-    src_tile_list.append(tile_CAN)
-    src_tile_list.append(tile_FIN)
-    src_tile_list.append(tile_MIC)
-    src_tile_list.append(tile_CHN)
-
-    dest_palette_list = []
-    dest_palette_list.append(palette_A)
-    dest_palette_list.append(palette_B)
-
-    solver = ConstraintSolver(src_tile_list, dest_palette_list, TileSetIntoPaletteEvaluator, True)
-    while solver.is_exhausted() == False:
-        solver.update()
-
-    print(f"Found {len(solver.solutions)} tile-into-palettes solutions!")
-    # Find those with the fewest or best colors.
-    best_num_colors = math.inf
-    worst_num_colors = -math.inf
-    best_solutions = []
-    worst_solutions = []
-    for solution in solver.solutions:
-        unique_colors = set()
-        for move in solution:
-            src_palette = move.dest_index
-            change_list = move.change_list
-            for color_into_color_move in change_list.color_into_color_moves:
-                color_index = color_into_color_move.dest_index
-                unique_color_tuple = (src_palette, color_index)
-                unique_colors.add(unique_color_tuple)
-        
-        num_colors = len(unique_colors)
-        if num_colors < best_num_colors:
-            best_num_colors = num_colors
-            best_solutions = []
-            best_solutions.append(solution)
-        elif num_colors == best_num_colors:
-            best_solutions.append(solution)
-
-        if num_colors > worst_num_colors:
-            worst_num_colors = num_colors
-            worst_solutions = []
-            worst_solutions.append(solution)
-        elif num_colors == worst_num_colors:
-            worst_solutions.append(solution)
-        
-    print(f"Found {len(best_solutions)} best solutions with {best_num_colors} colors.")
-    print(f"Found {len(worst_solutions)} worst solutions with {worst_num_colors} colors.")
-
-    # Pick a best solution and flatten it.
-    solution = best_solutions[0]
-    solver.apply_solution(solution)
-
-    print("Solution:")
-    for dest_palette_idx in range(len(dest_palette_list)):
-        print(f"\tPalette {dest_palette_idx}:")
-        palette = dest_palette_list[dest_palette_idx]
-        flattened_pal = palette.get_flattened_palette()
-        for color_idx in range(len(flattened_pal)):
-            print(f"\t\t{color_idx}: {flattened_pal[color_idx].properties.get_property(ColorEntry.PROPERTY_COLOR)}")
-
-        # Find all tiles mapped to this palette.
-        tiles_in_palette = []
-        for move in solution:
-            if dest_palette_idx == move.dest_index:
-                src_tile_idx = move.source_index
-                src_tile = src_tile_list[src_tile_idx]
-                tiles_in_palette.append(src_tile)
-        
-        print(f"\tTiles in Palette:")
-        if len(tiles_in_palette) == 0:
-            print(f"\t\tNone")
-        else:
-            for tile in tiles_in_palette:
-                print(f"\t\t{tile.name}")
-
-
-    print("Done!")
-
-
 
 def demo_colors():
     # Source nodes
@@ -419,7 +251,7 @@ def demo_font():
 
     print("Done!")
 
-def demo_flags_new():
+def demo_flags():
     ##############################################################################
     # STAGING PALETTES
     staging_palettes = []
@@ -566,8 +398,6 @@ def demo_flags_new():
 
 #demo_colors()
 
-#demo_flags()
-
 #demo_font()
 
-demo_flags_new()
+demo_flags()

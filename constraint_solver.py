@@ -1,31 +1,32 @@
 import math
 import copy
+from typing import List
 from BitSet import BitSet
 from FSM import FSM, State
 
 from ColorEntry import ColorEntry
 
 class Move:
-    def __init__(self, source_index, dest_index, change_list):
+    def __init__(self, source_index: int, dest_index: int, change_list: object):
         self.source_index = source_index
         self.dest_index = dest_index
         self.change_list = change_list
 
 
 class Evaluator:
-    def __init__(self, source_index, source):
+    def __init__(self, source_index: int, source: object):
         self.source_index = source_index
         self.source = source
     
-    def get_list_of_best_moves(self):
+    def get_list_of_best_moves(self) -> List[Move]:
         pass
 
-    def update_moves_for_destination(self, destination_index, destination):
+    def update_moves_for_destination(self, destination_index: int, destination: object):
         pass
 
 
 class ConstraintSolver:
-    def __init__(self, sources, destinations, evaluator_class, debugging):
+    def __init__(self, sources: List[object], destinations: List[object], evaluator_class: any, debugging: any):
         self.destinations = destinations
         self.sources = sources
         self._evaluator_class = evaluator_class
@@ -43,7 +44,7 @@ class ConstraintSolver:
         self._fsm.start(ConstraintSolver.AssessCompletionState)
 
     # Returns true if all possible solutions have been found.
-    def is_exhausted(self):
+    def is_exhausted(self) -> bool:
         curr_state = self._fsm.get_current_state()
         if curr_state == ConstraintSolver.ExhaustedState:
             return True
@@ -55,7 +56,7 @@ class ConstraintSolver:
 
     # Applies a solution provided by the constraint solver to the original destination.
     # Returns a set of how sources are mapped to destinations.
-    def apply_solution(self, solution):
+    def apply_solution(self, solution: List[Move]):
         for move in solution:
             source_index = move.source_index
             source = self.sources[source_index]
@@ -67,11 +68,11 @@ class ConstraintSolver:
 
             self._evaluator_class.apply_changes(source, destination, change_list)
 
-    def _add_subset_solver(self, subset_solver):
+    def _add_subset_solver(self, subset_solver: 'ConstraintSolver.SubsetSolver'):
         # Append this to our current list.
         self._wip_subset_solvers.append(subset_solver)
 
-    def _current_subset_solver_successful(self):
+    def _accept_current_subset_solver_as_successful(self):
         subset_solver = self._wip_subset_solvers[0]
         new_solution = copy.deepcopy(subset_solver._committed_moves)
         self.solutions.append(new_solution)
@@ -79,7 +80,7 @@ class ConstraintSolver:
         # Remove the current subset solver.
         self._wip_subset_solvers.pop(0)
 
-    def _current_subset_solver_failed(self):
+    def _accept_current_subset_solver_as_failed(self):
         # Remove the current subset solver.
         self._wip_subset_solvers.pop(0)
 
@@ -116,7 +117,7 @@ class ConstraintSolver:
         @staticmethod
         def on_enter(context):
             # Add the current solver as a solution.
-            context._current_subset_solver_successful()
+            context._accept_current_subset_solver_as_successful()
 
             return ConstraintSolver.AssessCompletionState
 
@@ -124,7 +125,7 @@ class ConstraintSolver:
         @staticmethod
         def on_enter(context):
             # Remove the current solver as failed.
-            context._current_subset_solver_failed()
+            context._accept_current_subset_solver_as_failed()
 
             return ConstraintSolver.AssessCompletionState
 
@@ -138,7 +139,7 @@ class ConstraintSolver:
         pass
 
     class SubsetSolver:
-        def __init__(self, parent_solver, sources, wip_solution_state, committed_moves, unmapped_sources_bitset, evaluator_class, indent_level, debugging):
+        def __init__(self, parent_solver: 'ConstraintSolver', sources: List[object], wip_solution_state: List[object], committed_moves: List[Move], unmapped_sources_bitset: BitSet, evaluator_class, indent_level: int, debugging):
             # Store our parent solver, so that we can alert them when done.
             self._parent_solver = parent_solver
 
@@ -292,7 +293,7 @@ class ConstraintSolver:
             # Increment our indent level
             self.indent_level = self.indent_level + 1
 
-        def _execute_move(self, move):
+        def _execute_move(self, move: Move):
             # Emit debugging.
             if self.debugging is not None:
                 indent_str = self.indent_level * '\t'
