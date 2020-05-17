@@ -109,7 +109,7 @@ def demo_flags():
     dest_palette_list.append(palette_B)
 
     solver = ConstraintSolver(src_tile_list, dest_palette_list, TileSetIntoPaletteEvaluator, True)
-    while solver.is_complete() == False:
+    while solver.is_exhausted() == False:
         solver.update()
 
     print(f"Found {len(solver.solutions)} tile-into-palettes solutions!")
@@ -230,7 +230,7 @@ def demo_colors():
     # Start the solver.
     solver = ConstraintSolver(source_node_list, dest_node_list, ColorsIntoColorsEvaluator, True)
 
-    while False == solver.is_complete():
+    while False == solver.is_exhausted():
         solver.update()
 
     solutions = solver.solutions
@@ -281,7 +281,7 @@ def demo_font():
     ##############################################################################
     # SOLUTION FOR COLOR REMAPS -> STAGING PALETTES
     remap_to_staging_solver = ConstraintSolver(color_remaps, staging_palettes, ColorRemapsIntoStagingPalettesEvaluator, True)
-    while remap_to_staging_solver.is_complete() == False:
+    while remap_to_staging_solver.is_exhausted() == False:
         remap_to_staging_solver.update()
 
     # TODO find the best one.
@@ -463,7 +463,7 @@ def demo_flags_new():
     ##############################################################################
     # SOLUTION FOR COLOR REMAPS -> STAGING PALETTES
     remap_to_staging_solver = ConstraintSolver(color_remaps, staging_palettes, ColorRemapsIntoStagingPalettesEvaluator, None)
-    while remap_to_staging_solver.is_complete() == False:
+    while remap_to_staging_solver.is_exhausted() == False:
         remap_to_staging_solver.update()
 
     # TODO find the best one.

@@ -135,7 +135,7 @@ class TileSetIntoPaletteEvaluator(Evaluator):
         palette_colors = destination.colors
 
         solver = ConstraintSolver(tile_colors, palette_colors, ColorsIntoColorsEvaluator, None)
-        while solver.is_complete() == False:
+        while solver.is_exhausted() == False:
             solver.update()
 
         # Did we have any solutions?

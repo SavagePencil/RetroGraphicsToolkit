@@ -133,7 +133,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
         palette_colors = destination.color_entries
 
         solver = ConstraintSolver(self.source.color_entries, palette_colors, ColorsIntoColorsEvaluator, None)
-        while solver.is_complete() == False:
+        while solver.is_exhausted() == False:
             solver.update()
 
         # Did we have any solutions?

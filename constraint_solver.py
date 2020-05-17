@@ -42,9 +42,10 @@ class ConstraintSolver:
         self._fsm = FSM(self)
         self._fsm.start(ConstraintSolver.AssessCompletionState)
 
-    def is_complete(self):
+    # Returns true if all possible solutions have been found.
+    def is_exhausted(self):
         curr_state = self._fsm.get_current_state()
-        if curr_state == ConstraintSolver.CompletedState:
+        if curr_state == ConstraintSolver.ExhaustedState:
             return True
 
         return False
@@ -86,7 +87,7 @@ class ConstraintSolver:
         @staticmethod
         def on_enter(context):
             if len(context._wip_subset_solvers) == 0:
-                return ConstraintSolver.CompletedState
+                return ConstraintSolver.ExhaustedState
             return ConstraintSolver.AssessMovesState
 
     class AssessMovesState(State):
@@ -127,7 +128,7 @@ class ConstraintSolver:
 
             return ConstraintSolver.AssessCompletionState
 
-    class CompletedState(State):
+    class ExhaustedState(State):
         pass
 
     class AllItemsMappedSuccessfully(Exception):
