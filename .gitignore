@@ -3087,3 +3087,5 @@ __pycache__/StagingPalette.cpython-38.pyc
 .venv/lib/python3.8/site-packages/wrapt-1.12.1-py3.8.egg-info/SOURCES.txt
 .venv/lib/python3.8/site-packages/wrapt-1.12.1-py3.8.egg-info/top_level.txt
 __pycache__/ColorEntriesIntoFinalPixelsEvaluator.cpython-38.pyc
+__pycache__/Interval.cpython-38.pyc
+__pycache__/IntervalsToBitSetsEvaluator.cpython-38.pyc

@@ -9,6 +9,9 @@ from StagingPalette import StagingPalette
 from ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
 from FinalPalette import FinalPalette
 import Quantize
+from Interval import Interval
+from IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
+from BitSet import BitSet
 
 def demo_colors():
     # Source nodes
@@ -396,8 +399,52 @@ def demo_flags():
     print("Done!")
 
 
+
+def demo_VRAM():
+    intervals = []
+    interval_font = Interval(slot_range=(20,20), length=96)
+    interval_player_sprite = Interval(slot_range=(0,255), length=6)
+    interval_enemy_sprite = Interval(slot_range=(0,255), length=2)
+    interval_bg1 = Interval(slot_range=(0,447), length=1)
+    interval_bg2 = Interval(slot_range=(256,447), length=1)
+    interval_bg3 = Interval(slot_range=(256,447), length=1)
+    intervals.append(interval_font)
+    intervals.append(interval_player_sprite)
+    intervals.append(interval_enemy_sprite)
+    intervals.append(interval_bg1)
+    intervals.append(interval_bg2)
+    intervals.append(interval_bg3)
+
+    bitsets = []
+    VRAMPositions = BitSet(448)
+    bitsets.append(VRAMPositions)
+
+    interval_to_VRAM_solver = ConstraintSolver(sources=intervals, destinations=bitsets, evaluator_class=IntervalsToBitSetsEvaluator, debugging=None)
+    while (len(interval_to_VRAM_solver.solutions) == 0) and (interval_to_VRAM_solver.is_exhausted() == False):
+        interval_to_VRAM_solver.update()
+
+    # How'd the solution go?
+    solution = interval_to_VRAM_solver.solutions[0]
+    for move in solution:
+        # The "source" will be one of our intervals, and since we're only doing one BitSet, our "destination" will always be the VRAMPositions array.
+        # Dig into the change list to figure out which slot was actually chosen.
+        source_interval = intervals[move.source_index]
+        dest_interval = move.change_list.possible_interval
+        src_pos = dest_interval.slot_range[0]
+        end_pos = src_pos + source_interval.length - 1
+        leftover = dest_interval.slot_range[1] - end_pos
+        if src_pos == end_pos:
+            print(f"Interval {move.source_index} will occupy location {src_pos}, with {leftover} spaces remaining.")
+        else:
+            print(f"Interval {move.source_index} will occupy locations {src_pos} thru {end_pos}, with {leftover} spaces remaining.")
+
+    print("Done!")
+
+
 #demo_colors()
 
 #demo_font()
 
-demo_flags()
+#demo_flags()
+
+demo_VRAM()

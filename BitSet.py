@@ -10,6 +10,9 @@ class BitSet:
 
         return new_entry
 
+    def get_num_bits(self) -> int:
+        return self._num_bits
+
     def is_set(self, bit_idx: int) -> bool:
         mask = 1 << bit_idx
         truth = (self._bitset & mask) != 0
