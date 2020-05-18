@@ -1,4 +1,5 @@
 import math
+from typing import List, Tuple, Optional
 from constraint_solver import ConstraintSolver, Evaluator, Move
 from ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
 from ColorRemap import ColorRemap
@@ -12,20 +13,20 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
     SCORE_ADJUST_EACH_COLOR_MATCHING = -100
 
     class PotentialMove:
-        def __init__(self, move, base_score):
+        def __init__(self, move: Move, base_score: int):
             self.move = move
             self.base_score = base_score
 
     class ChangeList:
-        def __init__(self, color_into_color_moves):
+        def __init__(self, color_into_color_moves: List[Move]):
             # We keep a list of moves for our color remap's colors into the dest palette.
             self.color_into_color_moves = color_into_color_moves
 
     @classmethod
-    def factory_constructor(cls, source_index, source):
+    def factory_constructor(cls, source_index: int, source: ColorRemap) -> 'ColorRemapsIntoStagingPalettesEvaluator':
         return ColorRemapsIntoStagingPalettesEvaluator(source_index, source)
 
-    def __init__(self, source_index, source):
+    def __init__(self, source_index: int, source: ColorRemap):
         super().__init__(source_index, source)
 
         # Create a map of destinations to possible moves.
@@ -33,7 +34,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
         # set of colors to be moved into a given palette.
         self._destination_to_potential_move_list = {}
 
-    def get_list_of_best_moves(self):
+    def get_list_of_best_moves(self) -> Tuple[int, List[Move]]:
         best_score = math.inf
         best_moves = []
 
@@ -76,7 +77,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
 
         return (best_score, best_moves)
 
-    def update_moves_for_destination(self, destination_index, destination):
+    def update_moves_for_destination(self, destination_index: int, destination: StagingPalette):
         # If we have a "None" move list for this destination, that's because 
         # we've already determined that we can't make a move into it.  
         # We are operating under the assertion that "if I couldn't move into 
@@ -103,7 +104,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
             self._destination_to_potential_move_list[destination_index] = potential_move_list
 
     @staticmethod
-    def apply_changes(source, destination, change_list):
+    def apply_changes(source: ColorRemap, destination: StagingPalette, change_list: 'ColorRemapsIntoStagingPalettesEvaluator.ChangeList'):
         # This class doesn't apply any changes to the Palette object itself.
 
         # Apply our ColorsIntoColors changes, which is a list of Moves.
@@ -118,11 +119,11 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
             ColorsIntoColorsEvaluator.apply_changes(src_color, dest_palette_color, color_into_color_change_list)
 
     @staticmethod
-    def is_destination_empty(destination):
+    def is_destination_empty(destination: StagingPalette) -> bool:
         # Palettes are always instantiated.
         return False
 
-    def _get_changes_to_fit(self, destination_index, destination):
+    def _get_changes_to_fit(self, destination_index: int, destination: StagingPalette) -> Optional[List['ColorRemapsIntoStagingPalettesEvaluator.ChangeList']]:
         # Check this remap to see if it has a palette assigned.  If it does, does it match the destination?
         assigned_palette = self.source.get_property(ColorRemap.PROPERTY_PALETTE)
         if (assigned_palette is not None) and (assigned_palette != destination_index):
@@ -152,7 +153,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
         return change_lists
 
     @staticmethod
-    def _get_score_for_changes(change_list):
+    def _get_score_for_changes(change_list: 'ColorRemapsIntoStagingPalettesEvaluator.ChangeList') -> int:
         score = 0
 
         # For every color that matches (i.e., no changes), add to the score

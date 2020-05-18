@@ -1,7 +1,9 @@
+from typing import Tuple
 import Quantize
+from PIL import Image
 
 class PixelArray:
-    def __init__(self, src_img, src_x, src_y, width, height):
+    def __init__(self, src_img: Image, src_x: int, src_y: int, width: int, height: int):
         self.width = width
         self.height = height
 
@@ -12,13 +14,13 @@ class PixelArray:
                 pixel = src_img.getpixel((col, row))
                 self.pixels.append(pixel)
 
-    def get_pixel_value(self, x, y):
+    def get_pixel_value(self, x: int, y: int) -> object:
         idx = (y * self.width) + x
         return self.pixels[idx]
 
-    def quantize(self, src_bpp, target_bpp):
-        src_maxes = tuple([2**bpp for bpp in src_bpp])
-        target_maxes = tuple([2**bpp for bpp in target_bpp])
+    def quantize(self, src_bits_tuple: Tuple, target_bits_tuple: Tuple):
+        src_maxes = tuple([2**bpp for bpp in src_bits_tuple])
+        target_maxes = tuple([2**bpp for bpp in target_bits_tuple])
 
         for pixel_idx in range(0, len(self.pixels)):
             old_color = self.pixels[pixel_idx]

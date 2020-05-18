@@ -1,6 +1,8 @@
+from typing import List, Mapping
 from Property import PropertyCollection, PropertyDefinition
 from ColorEntry import ColorEntry
 from StagingPalette import StagingPalette
+from constraint_solver import Move
 
 class ColorRemap(PropertyCollection):
     # Static vars
@@ -10,7 +12,7 @@ class ColorRemap(PropertyCollection):
         PROPERTY_PALETTE: PropertyDefinition(False, True)
     }
 
-    def __init__(self, initial_properties_map, unique_pixel_values_list, color_remap):
+    def __init__(self, initial_properties_map: Mapping[str, object], unique_pixel_values_list: List[object], color_remap: Mapping[object, ColorEntry]):
         super().__init__(ColorRemap.sProperty_def_map)
 
         # Set the initial properties
@@ -55,7 +57,7 @@ class ColorRemap(PropertyCollection):
         self.final_palette = None
         self.final_palette_indices = [None] * len(self.color_entries)
 
-    def remap_to_staging_palette(self, remap_to_staging_palette_move, staging_palettes):
+    def remap_to_staging_palette(self, remap_to_staging_palette_move: Move, staging_palettes: List[StagingPalette]):
         # The move parameter is a ColorRemapsIntoStagingPalettes move,
         # which tells us which palette we're going to.
         dest_palette_index = remap_to_staging_palette_move.dest_index

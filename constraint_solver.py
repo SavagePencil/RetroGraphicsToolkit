@@ -1,6 +1,6 @@
 import math
 import copy
-from typing import List
+from typing import List, Tuple
 from BitSet import BitSet
 from FSM import FSM, State
 
@@ -18,7 +18,7 @@ class Evaluator:
         self.source_index = source_index
         self.source = source
     
-    def get_list_of_best_moves(self) -> List[Move]:
+    def get_list_of_best_moves(self) -> Tuple[int, List[Move]]:
         pass
 
     def update_moves_for_destination(self, destination_index: int, destination: object):

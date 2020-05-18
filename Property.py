@@ -1,11 +1,13 @@
+from typing import Mapping
+
 class PropertyDefinition:
-    def __init__(self, is_unique, is_required):
+    def __init__(self, is_unique: bool, is_required: bool):
         self.is_unique = is_unique
         self.is_required = is_required
 
 
 class PropertyAlreadyAssignedError(Exception):
-    def __init__(self, property_name, source_entry, current_value, desired_value):
+    def __init__(self, property_name: str, source_entry: 'PropertyCollection', current_value: object, desired_value: object):
         self.property_name = property_name
         self.source_entry = source_entry
         self.current_value = current_value
@@ -13,7 +15,7 @@ class PropertyAlreadyAssignedError(Exception):
 
 
 class PropertyCollection:
-    def __init__(self, properties_def_map):
+    def __init__(self, properties_def_map: Mapping[str, object]):
         self._properties = {}
         self._properties_def_map = properties_def_map
         # Create keys for each property in this entry.
@@ -21,7 +23,7 @@ class PropertyCollection:
             self._properties[prop] = None
 
     @classmethod
-    def copy_construct_from(cls, rhs):
+    def copy_construct_from(cls, rhs: 'PropertyCollection') -> 'PropertyCollection':
         new_properties = cls(rhs._properties_def_map)
         for prop_name in rhs._properties_def_map:
             val = rhs.get_property(prop_name)
@@ -29,10 +31,10 @@ class PropertyCollection:
                 new_properties.attempt_set_property(prop_name, val)
         return new_properties
 
-    def get_property(self, property_name):
+    def get_property(self, property_name: str) -> object:
         return self._properties[property_name]
 
-    def attempt_set_property(self, property_name, desired_value):
+    def attempt_set_property(self, property_name: str, desired_value: object):
         current_value = self._properties[property_name]
         if desired_value is None or desired_value == current_value:
             return False
@@ -42,7 +44,7 @@ class PropertyCollection:
             self._properties[property_name] = desired_value
             return True
 
-    def is_complete(self):
+    def is_complete(self) -> bool:
         # Are *all* required properties fulfilled?
         for name, prop_def in self._properties_def_map:
             if prop_def.is_required:

@@ -1,3 +1,4 @@
+from typing import Mapping
 from ColorEntry import ColorEntry
 from BitSet import BitSet
 
@@ -5,13 +6,13 @@ from BitSet import BitSet
 # which pixel values will end up in which slot when transformed into a final
 # palette.
 class StagingPalette:
-    def __init__(self, num_slots):
+    def __init__(self, num_slots: int):
         self.color_entries = []
         while num_slots > 0:
             self.color_entries.append(ColorEntry())
             num_slots = num_slots - 1
 
-    def create_final_palette_mapping(self):
+    def create_final_palette_mapping(self) -> Mapping[int, int]:
         # This returns a mapping of color entry indices to
         # final palette indices.  We need to do this because
         # the color entries aren't in any particular order, but

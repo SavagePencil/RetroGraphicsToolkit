@@ -1,4 +1,5 @@
 import math
+from typing import List, Tuple, Optional
 from ColorEntry import ColorEntry
 from constraint_solver import Evaluator, Move
 
@@ -18,19 +19,19 @@ class ColorsIntoColorsEvaluator(Evaluator):
     SCORE_ADJUST_FREE_MOVE = -math.inf
 
     class PotentialMove:
-        def __init__(self, move, base_score):
+        def __init__(self, move: Move, base_score: int):
             self.move = move
             self.base_score = base_score
 
     class ChangeList:
-        def __init__(self, property_name_value_tuple_list):
+        def __init__(self, property_name_value_tuple_list: List[Tuple[str, object]]):
             self.property_name_value_tuple_list = property_name_value_tuple_list
 
     @classmethod
-    def factory_constructor(cls, source_index, source):
+    def factory_constructor(cls, source_index: int, source: ColorEntry) -> 'ColorsIntoColorsEvaluator':
         return ColorsIntoColorsEvaluator(source_index, source)
 
-    def __init__(self, source_index, source):
+    def __init__(self, source_index: int, source: ColorEntry):
         super().__init__(source_index, source)
 
         # Create a map of destination indices to potential moves.
@@ -38,7 +39,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
         # moves for each mapping:  we either fit or we don't.
         self._destination_to_potential_move = {}
 
-    def get_list_of_best_moves(self):
+    def get_list_of_best_moves(self) -> Tuple[int, List[Move]]:
         best_score = math.inf
         best_moves = []
 
@@ -76,7 +77,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
 
         return (best_score, best_moves)
 
-    def update_moves_for_destination(self, destination_index, destination):
+    def update_moves_for_destination(self, destination_index: int, destination: ColorEntry):
         # If we have a "None" move list for this destination, that's because 
         # we've already determined that we can't make a move into it.  
         # We are operating under the assertion that "if I couldn't move into 
@@ -101,7 +102,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
             self._destination_to_potential_move[destination_index] = potential_move
 
     @staticmethod
-    def apply_changes(source, destination, change_list):
+    def apply_changes(source: ColorEntry, destination: ColorEntry, change_list: 'ColorsIntoColorsEvaluator.ChangeList'):
         for property_name_value_tuple in change_list.property_name_value_tuple_list:
             # Each change is a tuple of property name and params.
             prop_name = property_name_value_tuple[0]
@@ -111,11 +112,11 @@ class ColorsIntoColorsEvaluator(Evaluator):
             destination.properties.attempt_set_property(prop_name, src_val)
 
     @staticmethod
-    def is_destination_empty(destination):
+    def is_destination_empty(destination: ColorEntry) -> bool:
         # Returns True if the ColorEntry has nothing set.
         return destination.is_empty()
 
-    def _get_changes_to_fit(self, destination):
+    def _get_changes_to_fit(self, destination: ColorEntry) -> Optional['ColorsIntoColorsEvaluator.ChangeList']:
         changes = []
 
         # Test color
@@ -190,7 +191,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
         return ColorsIntoColorsEvaluator.ChangeList(changes)
 
     @staticmethod
-    def _get_score_for_changes(change_list):
+    def _get_score_for_changes(change_list: 'ColorsIntoColorsEvaluator.ChangeList') -> int:
         score = 0
 
         if len(change_list.property_name_value_tuple_list) == 0:
