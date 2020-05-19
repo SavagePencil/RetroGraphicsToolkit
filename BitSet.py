@@ -1,3 +1,5 @@
+from typing import Optional
+
 class BitSet:
     def __init__(self, num_bits: int):
         self._bitset = 0
@@ -34,14 +36,26 @@ class BitSet:
     def set_all(self):
         self._bitset = (1 << self._num_bits) - 1
 
-    def get_next_unset_bit_index(self, start_idx: int) -> int:
+    def get_next_unset_bit_index(self, start_idx: int) -> Optional[int]:
         for idx in range(start_idx, self._num_bits):
             if self.is_set(idx) == False:
                 return idx
         return None
 
-    def get_next_set_bit_index(self, start_idx: int) -> int:
+    def get_next_set_bit_index(self, start_idx: int) -> Optional[int]:
         for idx in range(start_idx, self._num_bits):
+            if self.is_set(idx) == True:
+                return idx
+        return None
+
+    def get_previous_unset_bit_index(self, start_idx: int) -> Optional[int]:
+        for idx in range(start_idx, 0, -1):
+            if self.is_set(idx) == False:
+                return idx
+        return None
+
+    def get_previous_set_bit_index(self, start_idx: int) -> Optional[int]:
+        for idx in range(start_idx, 0, -1):
             if self.is_set(idx) == True:
                 return idx
         return None

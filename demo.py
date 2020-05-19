@@ -402,12 +402,12 @@ def demo_flags():
 
 def demo_VRAM():
     intervals = []
-    interval_font = Interval(slot_range=(20,20), length=96)
-    interval_player_sprite = Interval(slot_range=(0,255), length=6)
-    interval_enemy_sprite = Interval(slot_range=(0,255), length=2)
-    interval_bg1 = Interval(slot_range=(0,447), length=1)
-    interval_bg2 = Interval(slot_range=(256,447), length=1)
-    interval_bg3 = Interval(slot_range=(256,447), length=1)
+    interval_font = Interval.create_fixed_length_at_start_point(begin=20, length=96)
+    interval_player_sprite = Interval(begin=0, end=255, length=6)
+    interval_enemy_sprite = Interval(begin=0, end=255, length=2)
+    interval_bg1 = Interval(begin=0, end=447, length=1)
+    interval_bg2 = Interval(begin=256, end=447, length=1)
+    interval_bg3 = Interval(begin=256, end=447, length=1)
     intervals.append(interval_font)
     intervals.append(interval_player_sprite)
     intervals.append(interval_enemy_sprite)
@@ -429,14 +429,11 @@ def demo_VRAM():
         # The "source" will be one of our intervals, and since we're only doing one BitSet, our "destination" will always be the VRAMPositions array.
         # Dig into the change list to figure out which slot was actually chosen.
         source_interval = intervals[move.source_index]
-        dest_interval = move.change_list.possible_interval
-        src_pos = dest_interval.slot_range[0]
-        end_pos = src_pos + source_interval.length - 1
-        leftover = dest_interval.slot_range[1] - end_pos
-        if src_pos == end_pos:
-            print(f"Interval {move.source_index} will occupy location {src_pos}, with {leftover} spaces remaining.")
+        dest_interval = move.change_list.chosen_interval
+        if dest_interval.begin == dest_interval.end:
+            print(f"Interval {move.source_index}: ({source_interval.begin}, {source_interval.end}) with length {source_interval.length} will occupy location {dest_interval.begin}.")
         else:
-            print(f"Interval {move.source_index} will occupy locations {src_pos} thru {end_pos}, with {leftover} spaces remaining.")
+            print(f"Interval {move.source_index}: ({source_interval.begin}, {source_interval.end}) with length {source_interval.length} will occupy locations {dest_interval.begin} thru {dest_interval.end}")
 
     print("Done!")
 
@@ -445,6 +442,6 @@ def demo_VRAM():
 
 #demo_font()
 
-#demo_flags()
+demo_flags()
 
 demo_VRAM()
