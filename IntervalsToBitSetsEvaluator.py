@@ -6,7 +6,19 @@ from BitSet import BitSet
 
 class IntervalsToBitSetsEvaluator(Evaluator):
     # Static Vars
-    # TODO SCORING
+
+    # Larger intervals will get a better score.
+    SCORE_ADJUST_PER_INTERVAL_ITEM = -10
+
+    # Those with the fewest possible destinations get a better score
+    # so that they are prioritized.
+    # This is different than how we use moves.  Example:
+    # Let's say we have interval 111 that we're workig into BitSet 000001.
+    # 000001
+    # 111     <- 1st possible destination
+    #  111    <- 2nd
+    #   111   <- 3rd
+    SCORE_PER_POSSIBLE_DESTINATION = 10000
 
     class PotentialMove:
         def __init__(self, move: Move, base_score: int):
@@ -76,7 +88,7 @@ class IntervalsToBitSetsEvaluator(Evaluator):
             for change_list in change_lists:
                 move = Move(self.source_index, destination_index, change_list)
 
-                score = IntervalsToBitSetsEvaluator._get_score_for_changes(change_list)
+                score = IntervalsToBitSetsEvaluator._get_score_for_changes(self.source, change_list)
 
                 potential_move = IntervalsToBitSetsEvaluator.PotentialMove(move, score)
                 potential_move_list.append(potential_move)
@@ -120,7 +132,8 @@ class IntervalsToBitSetsEvaluator(Evaluator):
             if next_set_bit_idx is None:
                 # If we ran off the edge, set the bound at the last value.
                 next_set_bit_idx = destination.get_num_bits()
-            elif next_set_bit_idx > range_end_idx:
+            
+            if next_set_bit_idx > range_end_idx:
                 # Make it bound to our top end of the range.
                 next_set_bit_idx = range_end_idx + 1
             
@@ -137,8 +150,24 @@ class IntervalsToBitSetsEvaluator(Evaluator):
         return change_lists
 
     @staticmethod
-    def _get_score_for_changes(change_list: 'IntervalsToBitSetsEvaluator.ChangeList') -> int:
+    def _get_score_for_changes(source: Interval, change_list: 'IntervalsToBitSetsEvaluator.ChangeList') -> int:
         score = 0
-        # TODO
+
+        # Larger intervals will get a better score so that they get prioritized.
+        score += source.length * IntervalsToBitSetsEvaluator.SCORE_ADJUST_PER_INTERVAL_ITEM
+
+        # Those with the fewest possible destinations get a better score
+        # so that they are prioritized.
+        # This is different than how we use moves.  Example:
+        # Let's say we have interval 111 that we're workig into BitSet 000001.
+        # 000001
+        # 111     <- 1st possible destination
+        #  111    <- 2nd
+        #   111   <- 3rd
+        if change_list is not None:
+            interval_len = source.length
+            num_destinations = change_list.possible_interval.length - interval_len
+            score += num_destinations * IntervalsToBitSetsEvaluator.SCORE_PER_POSSIBLE_DESTINATION
+        
 
         return score

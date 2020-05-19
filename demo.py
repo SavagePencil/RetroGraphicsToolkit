@@ -419,7 +419,7 @@ def demo_VRAM():
     VRAMPositions = BitSet(448)
     bitsets.append(VRAMPositions)
 
-    interval_to_VRAM_solver = ConstraintSolver(sources=intervals, destinations=bitsets, evaluator_class=IntervalsToBitSetsEvaluator, debugging=None)
+    interval_to_VRAM_solver = ConstraintSolver(sources=intervals, destinations=bitsets, evaluator_class=IntervalsToBitSetsEvaluator, debugging=True)
     while (len(interval_to_VRAM_solver.solutions) == 0) and (interval_to_VRAM_solver.is_exhausted() == False):
         interval_to_VRAM_solver.update()
 
