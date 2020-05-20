@@ -437,11 +437,159 @@ def demo_VRAM():
 
     print("Done!")
 
+def demo_unique_tiles():
+    ##############################################################################
+    # PIXEL ARRAYS
+    parent_image = Image.open("font.png").convert("RGB")
+
+    pixel_arrays = []
+
+    # Load the image and then divvy up into separate tiles.
+    pattern_width = 8
+    pattern_height = 8
+
+    for start_y in range(0, parent_image.height, pattern_height):
+        for start_x in range(0, parent_image.width, pattern_width):
+            px_array = PixelArray(parent_image, start_x, start_y, pattern_width, pattern_height)
+            px_array.quantize((8,8,8), (2,2,2))
+
+            pixel_arrays.append(px_array)
+
+    ##############################################################################
+    # HASHED ARRAYS
+    NO_FLIP = 0
+    H_FLIPPED = 1
+    V_FLIPPED = 2
+    HV_FLIPPED = 3
+
+    hashes_to_list_of_pixel_array_idx_flip_tuples = {}
+
+    for px_array_idx in range(len(pixel_arrays)):
+        px_array = pixel_arrays[px_array_idx]
+
+        # NO_FLIP:  Go top to bottom, left to right.
+        indexed_array_no_flip = []
+        source_pixel_value_to_index = {}
+        for y in range(0, px_array.height, 1):
+            for x in range(0, px_array.width, 1):
+                pixel_idx = (y * px_array.width) + x
+                pixel_value = px_array.pixels[pixel_idx]
+                if pixel_value in source_pixel_value_to_index:
+                    # Already seen it.  Get the index for it.
+                    idx = source_pixel_value_to_index[pixel_value]
+                    indexed_array_no_flip.append(idx)
+                else:
+                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
+                    idx = len(source_pixel_value_to_index.values())
+                    source_pixel_value_to_index[pixel_value] = idx
+                    indexed_array_no_flip.append(idx)
+
+        # H_FLIP:  Go top to bottom, right to left.
+        indexed_array_h_flip = []
+        source_pixel_value_to_index = {}
+        for y in range(0, px_array.height, 1):
+            for x in range(px_array.width - 1, -1, -1):
+                pixel_idx = (y * px_array.width) + x
+                pixel_value = px_array.pixels[pixel_idx]
+                if pixel_value in source_pixel_value_to_index:
+                    # Already seen it.  Get the index for it.
+                    idx = source_pixel_value_to_index[pixel_value]
+                    indexed_array_h_flip.append(idx)
+                else:
+                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
+                    idx = len(source_pixel_value_to_index.values())
+                    source_pixel_value_to_index[pixel_value] = idx
+                    indexed_array_h_flip.append(idx)
+        
+        # V_FLIP:  Go bottom to top, left to right.
+        indexed_array_v_flip = []
+        source_pixel_value_to_index = {}
+        for y in range(px_array.height - 1, -1, -1):
+            for x in range(0, px_array.width, 1):
+                pixel_idx = (y * px_array.width) + x
+                pixel_value = px_array.pixels[pixel_idx]
+                if pixel_value in source_pixel_value_to_index:
+                    # Already seen it.  Get the index for it.
+                    idx = source_pixel_value_to_index[pixel_value]
+                    indexed_array_v_flip.append(idx)
+                else:
+                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
+                    idx = len(source_pixel_value_to_index.values())
+                    source_pixel_value_to_index[pixel_value] = idx
+                    indexed_array_v_flip.append(idx)
+
+        # HV_FLIP:  Go bottom to top, right to left.
+        indexed_array_hv_flip = []
+        source_pixel_value_to_index = {}
+        for y in range(px_array.height - 1, -1, -1):
+            for x in range(px_array.width - 1, -1, -1):
+                pixel_idx = (y * px_array.width) + x
+                pixel_value = px_array.pixels[pixel_idx]
+                if pixel_value in source_pixel_value_to_index:
+                    # Already seen it.  Get the index for it.
+                    idx = source_pixel_value_to_index[pixel_value]
+                    indexed_array_hv_flip.append(idx)
+                else:
+                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
+                    idx = len(source_pixel_value_to_index.values())
+                    source_pixel_value_to_index[pixel_value] = idx
+                    indexed_array_hv_flip.append(idx)
+
+        hash_no_flip = hash(tuple(indexed_array_no_flip))
+        if hash_no_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
+            # Append it.
+            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_no_flip]
+            curr_list.append((px_array_idx, NO_FLIP))
+        else:
+            # Add it.
+            new_list = [(px_array_idx, NO_FLIP)]
+            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_no_flip] = new_list
+
+        hash_h_flip = hash(tuple(indexed_array_h_flip))
+        if hash_h_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
+            # Append it.
+            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_h_flip]
+            curr_list.append((px_array_idx, H_FLIPPED))
+        else:
+            # Add it.
+            new_list = [(px_array_idx, H_FLIPPED)]
+            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_h_flip] = new_list
+
+        hash_v_flip = hash(tuple(indexed_array_v_flip))
+        if hash_v_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
+            # Append it.
+            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_v_flip]
+            curr_list.append((px_array_idx, V_FLIPPED))
+        else:
+            # Add it.
+            new_list = [(px_array_idx, V_FLIPPED)]
+            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_v_flip] = new_list
+
+        hash_hv_flip = hash(tuple(indexed_array_hv_flip))
+        if hash_hv_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
+            # Append it.
+            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_hv_flip]
+            curr_list.append((px_array_idx, HV_FLIPPED))
+        else:
+            # Add it.
+            new_list = [(px_array_idx, HV_FLIPPED)]
+            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_hv_flip] = new_list
+
+    print("The following matches were found:")
+    for hash_val, match_list in hashes_to_list_of_pixel_array_idx_flip_tuples.items():
+        if len(match_list) > 1:
+            print(f"{hash_val}:")
+            for match_tuple in match_list:
+                print(f"\t{match_tuple[0]}, {match_tuple[1]}")
+
+    print("DONE!")
 
 #demo_colors()
 
 #demo_font()
 
-demo_flags()
+#demo_flags()
 
-demo_VRAM()
+#demo_VRAM()
+
+demo_unique_tiles()
