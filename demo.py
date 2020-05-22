@@ -8,6 +8,7 @@ from ColorRemap import ColorRemap
 from StagingPalette import StagingPalette
 from ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
 from FinalPalette import FinalPalette
+from Pattern import Pattern
 import Quantize
 from Interval import Interval
 from IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
@@ -456,133 +457,54 @@ def demo_unique_tiles():
             pixel_arrays.append(px_array)
 
     ##############################################################################
-    # HASHED ARRAYS
-    NO_FLIP = 0
-    H_FLIPPED = 1
-    V_FLIPPED = 2
-    HV_FLIPPED = 3
+    # PATTERNS
+    patterns = []
+    pattern_property_map_all_flips =  {
+        Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ_VERT
+    }
+    for pixel_array in pixel_arrays:
+        pattern = Pattern(pixel_array=pixel_array, initial_properties_map=pattern_property_map_all_flips)
+        patterns.append(pattern)
 
-    hashes_to_list_of_pixel_array_idx_flip_tuples = {}
+    ##############################################################################
+    # MATCH DETECTION
+    hashes_to_list_of_pattern_idx_flip_tuples = {}
+    for pattern_idx in range(len(patterns)):
+        pattern = patterns[pattern_idx]
 
-    for px_array_idx in range(len(pixel_arrays)):
-        px_array = pixel_arrays[px_array_idx]
-
-        # NO_FLIP:  Go top to bottom, left to right.
-        indexed_array_no_flip = []
-        source_pixel_value_to_index = {}
-        for y in range(0, px_array.height, 1):
-            for x in range(0, px_array.width, 1):
-                pixel_idx = (y * px_array.width) + x
-                pixel_value = px_array.pixels[pixel_idx]
-                if pixel_value in source_pixel_value_to_index:
-                    # Already seen it.  Get the index for it.
-                    idx = source_pixel_value_to_index[pixel_value]
-                    indexed_array_no_flip.append(idx)
+        # Try all flip combos
+        for flip in list(Pattern.Flip):
+            hash_val = pattern.get_hash_for_flip(flip)
+            if hash_val is not None:
+                # This is a valid flip.
+                if hash_val in hashes_to_list_of_pattern_idx_flip_tuples:
+                    # ...and the hash already existed, so add us to it.
+                    match_list = hashes_to_list_of_pattern_idx_flip_tuples[hash_val]
+                    match_list.append((pattern_idx, flip))
                 else:
-                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
-                    idx = len(source_pixel_value_to_index.values())
-                    source_pixel_value_to_index[pixel_value] = idx
-                    indexed_array_no_flip.append(idx)
+                    # ...first time seeing this hash, so create the list.
+                    match_list = [(pattern_idx, flip)]
+                    hashes_to_list_of_pattern_idx_flip_tuples[hash_val] = match_list
 
-        # H_FLIP:  Go top to bottom, right to left.
-        indexed_array_h_flip = []
-        source_pixel_value_to_index = {}
-        for y in range(0, px_array.height, 1):
-            for x in range(px_array.width - 1, -1, -1):
-                pixel_idx = (y * px_array.width) + x
-                pixel_value = px_array.pixels[pixel_idx]
-                if pixel_value in source_pixel_value_to_index:
-                    # Already seen it.  Get the index for it.
-                    idx = source_pixel_value_to_index[pixel_value]
-                    indexed_array_h_flip.append(idx)
-                else:
-                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
-                    idx = len(source_pixel_value_to_index.values())
-                    source_pixel_value_to_index[pixel_value] = idx
-                    indexed_array_h_flip.append(idx)
-        
-        # V_FLIP:  Go bottom to top, left to right.
-        indexed_array_v_flip = []
-        source_pixel_value_to_index = {}
-        for y in range(px_array.height - 1, -1, -1):
-            for x in range(0, px_array.width, 1):
-                pixel_idx = (y * px_array.width) + x
-                pixel_value = px_array.pixels[pixel_idx]
-                if pixel_value in source_pixel_value_to_index:
-                    # Already seen it.  Get the index for it.
-                    idx = source_pixel_value_to_index[pixel_value]
-                    indexed_array_v_flip.append(idx)
-                else:
-                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
-                    idx = len(source_pixel_value_to_index.values())
-                    source_pixel_value_to_index[pixel_value] = idx
-                    indexed_array_v_flip.append(idx)
-
-        # HV_FLIP:  Go bottom to top, right to left.
-        indexed_array_hv_flip = []
-        source_pixel_value_to_index = {}
-        for y in range(px_array.height - 1, -1, -1):
-            for x in range(px_array.width - 1, -1, -1):
-                pixel_idx = (y * px_array.width) + x
-                pixel_value = px_array.pixels[pixel_idx]
-                if pixel_value in source_pixel_value_to_index:
-                    # Already seen it.  Get the index for it.
-                    idx = source_pixel_value_to_index[pixel_value]
-                    indexed_array_hv_flip.append(idx)
-                else:
-                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
-                    idx = len(source_pixel_value_to_index.values())
-                    source_pixel_value_to_index[pixel_value] = idx
-                    indexed_array_hv_flip.append(idx)
-
-        hash_no_flip = hash(tuple(indexed_array_no_flip))
-        if hash_no_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
-            # Append it.
-            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_no_flip]
-            curr_list.append((px_array_idx, NO_FLIP))
-        else:
-            # Add it.
-            new_list = [(px_array_idx, NO_FLIP)]
-            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_no_flip] = new_list
-
-        hash_h_flip = hash(tuple(indexed_array_h_flip))
-        if hash_h_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
-            # Append it.
-            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_h_flip]
-            curr_list.append((px_array_idx, H_FLIPPED))
-        else:
-            # Add it.
-            new_list = [(px_array_idx, H_FLIPPED)]
-            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_h_flip] = new_list
-
-        hash_v_flip = hash(tuple(indexed_array_v_flip))
-        if hash_v_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
-            # Append it.
-            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_v_flip]
-            curr_list.append((px_array_idx, V_FLIPPED))
-        else:
-            # Add it.
-            new_list = [(px_array_idx, V_FLIPPED)]
-            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_v_flip] = new_list
-
-        hash_hv_flip = hash(tuple(indexed_array_hv_flip))
-        if hash_hv_flip in hashes_to_list_of_pixel_array_idx_flip_tuples:
-            # Append it.
-            curr_list = hashes_to_list_of_pixel_array_idx_flip_tuples[hash_hv_flip]
-            curr_list.append((px_array_idx, HV_FLIPPED))
-        else:
-            # Add it.
-            new_list = [(px_array_idx, HV_FLIPPED)]
-            hashes_to_list_of_pixel_array_idx_flip_tuples[hash_hv_flip] = new_list
-
-    print("The following matches were found:")
-    for hash_val, match_list in hashes_to_list_of_pixel_array_idx_flip_tuples.items():
+    ##############################################################################
+    # DUPE PAIRING
+    for hash_val, match_list in hashes_to_list_of_pattern_idx_flip_tuples.items():
         if len(match_list) > 1:
-            print(f"{hash_val}:")
+            unique_patterns = set()
+            match_strs = []
             for match_tuple in match_list:
-                print(f"\t{match_tuple[0]}, {match_tuple[1]}")
+                pattern_idx = match_tuple[0]
+                if pattern_idx not in unique_patterns:
+                    # Add it, and record the flip.
+                    unique_patterns.add(pattern_idx)
+                    match_strs.append(f"\t{match_tuple[0]}, {match_tuple[1].name}")
+            
+            if len(match_strs) > 1:
+                print(f"{hash_val}:")
+                print("".join(match_strs))
 
     print("DONE!")
+
 
 #demo_colors()
 
