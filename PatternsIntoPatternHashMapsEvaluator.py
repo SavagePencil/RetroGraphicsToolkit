@@ -5,9 +5,9 @@ from Pattern import Pattern
 
 class PatternsIntoPatternHashMapsEvaluator(Evaluator):
     # Static Vars
-    # We take patterns which have fewer flip options 
+    # We take patterns which have fewer hash/flip options 
     # before those with more options.
-    SCORE_PENALTY_PER_FLIP_OPTION = 10
+    SCORE_PENALTY_PER_UNIQUE_HASH_OPTION = 10
 
     # We prefer not to add a new pattern when 
     # we could match an existing one.
@@ -16,7 +16,7 @@ class PatternsIntoPatternHashMapsEvaluator(Evaluator):
     # We prefer not flipping patterns when possible.
     SCORE_ADJUST_NO_FLIPPING = -1
 
-    # Matches are "free"
+    # When we only have one move, those are "free"
     SCORE_ADJUST_FREE_MOVE = -math.inf
 
     class PotentialMove:
@@ -25,12 +25,14 @@ class PatternsIntoPatternHashMapsEvaluator(Evaluator):
             self.base_score = base_score
 
     class ChangeList:
-        def __init__(self, matched_pattern_idx: int, flips_to_match: Pattern.Flip):
-            # Who did we match, and which flips were necessary?
+        def __init__(self, source_pattern_idx: int, matches_existing_entry: bool, flips_to_match: Pattern.Flip):
+            # Who is getting mapped?
+            self.source_pattern_idx = source_pattern_idx
 
-            # If we were added to a map, instead of matching an existing one,
-            # this will be None.
-            self.matched_pattern_idx = matched_pattern_idx
+            # Record whether this is MATCHES an existing entry or if we're ADDING it.
+            self.matches_existing_entry = matches_existing_entry
+
+            # Which flips were necessary to match?
             self.flips_to_match = flips_to_match
 
     @classmethod
@@ -101,7 +103,7 @@ class PatternsIntoPatternHashMapsEvaluator(Evaluator):
             for change_list in change_lists:
                 move = Move(self.source_index, destination_index, change_list)
 
-                score = PatternsIntoPatternHashMapsEvaluator._get_score_for_changes(change_list)
+                score = self._get_score_for_changes(change_list)
 
                 potential_move = PatternsIntoPatternHashMapsEvaluator.PotentialMove(move, score)
                 potential_move_list.append(potential_move)
@@ -110,4 +112,73 @@ class PatternsIntoPatternHashMapsEvaluator(Evaluator):
 
     @staticmethod
     def apply_changes(source: Pattern, destination: Mapping[int, Tuple[int, Pattern.Flip]], change_list: 'PatternsIntoPatternHashMapsEvaluator.ChangeList'):
+        # What we want to do is look at the change list and determine one of two things:
+        # 1. Whether we are ADDING a new pattern to the map
+        # 2. Whether we are MATCHING a pattern to an existing one, and which flips are required
+
+        # What's the index of the source pattern?
+        source_pattern_idx = change_list.source_pattern_idx
+
+        # Get the hash for the flips identified in the change list.
+        flip = change_list.flips_to_match
+        hash_val = source.get_hash_for_flip(flip)
+
+        # Do we have an entry in the map for that hash?
+        if hash_val in destination:
+            # Append this pattern to the list.
+            match_list = destination[hash_val]
+            match_list.append((source_pattern_idx, flip))
+        else:
+            # Our destination map doesn't have this one...yet.
+            # Create a new list for it.
+            match_list = [(source_pattern_idx, flip)]
+            destination[hash_val] = match_list
+
+    @staticmethod
+    def is_destination_empty(destination: Mapping[int, Tuple[int, Pattern.Flip]]) -> bool:
+        # Maps are always instantiated.
+        return False
+
+    def _get_changes_to_fit(self, destination_index: int, destination: Mapping[int, Tuple[int, Pattern.Flip]]) -> Optional[List['PatternsIntoPatternHashMapsEvaluator.ChangeList']]:
+        # Make sure this pattern is allowed to go into this destination.
+        assigned_pattern_set = self.source.get_property(Pattern.PROPERTY_SPECIFIC_PATTERN_SET_INDEX)
+        if (assigned_pattern_set is not None) and (assigned_pattern_set != destination_index):
+            # This pattern wants to be assigned to a specific pattern set, and it's not this one.
+            return None
         
+        change_lists = []
+
+        # Look at each hash for this source and see if it matches anything currently in the map.
+        for flip in list(Pattern.Flip):
+            hash_val = self.source.get_hash_for_flip(flip)
+            if hash_val is not None:
+                # This is a valid flip for this pattern.
+                # Have we seen it before?
+                matches_existing_entry = hash_val in destination
+                change_list = PatternsIntoPatternHashMapsEvaluator.ChangeList(source_pattern_idx=self.source_index, matches_existing_entry=matches_existing_entry, flips_to_match=flip)
+                change_lists.append(change_list)
+
+        return change_lists
+
+    def _get_score_for_changes(self, change_list: 'PatternsIntoPatternHashMapsEvaluator.ChangeList') -> int:
+        score = 0
+
+        if change_list.matches_existing_entry == False:
+            # We prefer not to add a new pattern when 
+            # we could match an existing one.
+            score += PatternsIntoPatternHashMapsEvaluator.SCORE_PENALTY_ADD_NEW_PATTERN
+
+        # We prefer not flipping patterns when possible.
+        if change_list.flips_to_match == Pattern.Flip.NONE:
+            score += PatternsIntoPatternHashMapsEvaluator.SCORE_ADJUST_NO_FLIPPING
+
+        # We take patterns which have fewer *UNIQUE* hashes 
+        # before those with more options, so that they get prioritized.
+        unique_hashes = set()
+        for flip in list(Pattern.Flip):
+            hash_val = self.source.get_hash_for_flip(flip)
+            if hash_val is not None:
+                unique_hashes.add(hash_val)
+        score += len(unique_hashes) * PatternsIntoPatternHashMapsEvaluator.SCORE_PENALTY_PER_UNIQUE_HASH_OPTION
+
+        return score

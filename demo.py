@@ -13,6 +13,7 @@ import Quantize
 from Interval import Interval
 from IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
 from BitSet import BitSet
+from PatternsIntoPatternHashMapsEvaluator import PatternsIntoPatternHashMapsEvaluator
 
 def demo_colors():
     # Source nodes
@@ -467,7 +468,34 @@ def demo_unique_tiles():
         patterns.append(pattern)
 
     ##############################################################################
-    # MATCH DETECTION
+    # PATTERN SOLVING
+    dest_map = {}
+    dest_maps = [dest_map]
+
+    solver = ConstraintSolver(sources=patterns, destinations=dest_maps, evaluator_class=PatternsIntoPatternHashMapsEvaluator, debugging=None)
+    while((len(solver.solutions) == 0) and (solver.is_exhausted() == False)):
+        solver.update()
+
+    # How'd we do?
+    solution = solver.solutions[0]
+    solver.apply_solution(solution)
+
+    print(f"Started with {len(patterns)} tiles, and resulted in {len(dest_map.values())} after solving.")
+
+    for unique_hash, tile_flip_tuple_list in dest_map.items():
+        if len(tile_flip_tuple_list) > 1:
+            match_list_strs = []
+            match_list_strs.append(f"Tiles sharing hash {unique_hash}: ")
+            for tile_flip_tuple in tile_flip_tuple_list:
+                match_list_strs.append(f"({tile_flip_tuple[0]} flipped: {tile_flip_tuple[1].name})")
+            final_str = "".join(match_list_strs)
+
+            print(final_str)
+
+    print("Done!")
+
+    ##############################################################################
+    # MANUAL MATCH DETECTION
     hashes_to_list_of_pattern_idx_flip_tuples = {}
     for pattern_idx in range(len(patterns)):
         pattern = patterns[pattern_idx]
