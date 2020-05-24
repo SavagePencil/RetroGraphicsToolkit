@@ -71,7 +71,7 @@ class PatternsIntoPatternHashMapsEvaluator(Evaluator):
                     change_list = potential_move.move.change_list
 
                     # If we matched somebody, and we only have one move, take it!
-                    if only_one_move and (change_list.matched_pattern_idx is not None):
+                    if only_one_move and (change_list.matches_existing_entry == True):
                         # We matched somebody, and no other choices...it's free!
                         score = score + PatternsIntoPatternHashMapsEvaluator.SCORE_ADJUST_FREE_MOVE
 

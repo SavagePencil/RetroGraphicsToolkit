@@ -461,7 +461,7 @@ def demo_unique_tiles():
     # PATTERNS
     patterns = []
     pattern_property_map_all_flips =  {
-        Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ_VERT
+        Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ
     }
     for pixel_array in pixel_arrays:
         pattern = Pattern(pixel_array=pixel_array, initial_properties_map=pattern_property_map_all_flips)
@@ -480,58 +480,39 @@ def demo_unique_tiles():
     solution = solver.solutions[0]
     solver.apply_solution(solution)
 
-    print(f"Started with {len(patterns)} tiles, and resulted in {len(dest_map.values())} after solving.")
+    print(f"Started with {len(patterns)} patterns, and resulted in {len(dest_map.values())} after solving.")
 
-    for unique_hash, tile_flip_tuple_list in dest_map.items():
-        if len(tile_flip_tuple_list) > 1:
+    for unique_hash, pattern_flip_tuple_list in dest_map.items():
+        if len(pattern_flip_tuple_list) > 1:
             match_list_strs = []
-            match_list_strs.append(f"Tiles sharing hash {unique_hash}: ")
-            for tile_flip_tuple in tile_flip_tuple_list:
-                match_list_strs.append(f"({tile_flip_tuple[0]} flipped: {tile_flip_tuple[1].name})")
+            match_list_strs.append(f"Patterns sharing hash {unique_hash}: ")
+            for pattern_flip_tuple in pattern_flip_tuple_list:
+                match_list_strs.append(f"({pattern_flip_tuple[0]} flipped: {pattern_flip_tuple[1].name})")
             final_str = "".join(match_list_strs)
 
             print(final_str)
 
+    ##############################################################################
+    # PATTERN REMAPPING
+    # (note:  NOT nametable mapping:  that requires VRAM locs!  This is showing
+    # the remapped original set of patterns to their new ones, plus flips.
+    src_index_to_dest_pattern_tuple_list = [None] * len(patterns)
+    for pattern_flip_tuple_list in dest_map.values():
+        # The first item in the list is the canonical pattern.
+        canonical_tuple = pattern_flip_tuple_list[0]
+        src_index_to_dest_pattern_tuple_list[canonical_tuple[0]] = canonical_tuple
+        
+        # All subsequent ones in the list point to this pattern.
+        for pattern_flip_idx in range(1, len(pattern_flip_tuple_list)):
+            pattern_flip_tuple = pattern_flip_tuple_list[pattern_flip_idx]
+
+            src_index_to_dest_pattern_tuple_list[pattern_flip_tuple[0]] = (canonical_tuple[0], pattern_flip_tuple[1])
+
+    for remap_tuple_idx in range(len(src_index_to_dest_pattern_tuple_list)):
+        dest_pattern_tuple = src_index_to_dest_pattern_tuple_list[remap_tuple_idx]
+        print(f"{remap_tuple_idx}: {dest_pattern_tuple[0]}, {dest_pattern_tuple[1].name}")
+
     print("Done!")
-
-    ##############################################################################
-    # MANUAL MATCH DETECTION
-    hashes_to_list_of_pattern_idx_flip_tuples = {}
-    for pattern_idx in range(len(patterns)):
-        pattern = patterns[pattern_idx]
-
-        # Try all flip combos
-        for flip in list(Pattern.Flip):
-            hash_val = pattern.get_hash_for_flip(flip)
-            if hash_val is not None:
-                # This is a valid flip.
-                if hash_val in hashes_to_list_of_pattern_idx_flip_tuples:
-                    # ...and the hash already existed, so add us to it.
-                    match_list = hashes_to_list_of_pattern_idx_flip_tuples[hash_val]
-                    match_list.append((pattern_idx, flip))
-                else:
-                    # ...first time seeing this hash, so create the list.
-                    match_list = [(pattern_idx, flip)]
-                    hashes_to_list_of_pattern_idx_flip_tuples[hash_val] = match_list
-
-    ##############################################################################
-    # DUPE PAIRING
-    for hash_val, match_list in hashes_to_list_of_pattern_idx_flip_tuples.items():
-        if len(match_list) > 1:
-            unique_patterns = set()
-            match_strs = []
-            for match_tuple in match_list:
-                pattern_idx = match_tuple[0]
-                if pattern_idx not in unique_patterns:
-                    # Add it, and record the flip.
-                    unique_patterns.add(pattern_idx)
-                    match_strs.append(f"\t{match_tuple[0]}, {match_tuple[1].name}")
-            
-            if len(match_strs) > 1:
-                print(f"{hash_val}:")
-                print("".join(match_strs))
-
-    print("DONE!")
 
 
 #demo_colors()

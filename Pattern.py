@@ -45,11 +45,11 @@ class Pattern(PropertyCollection):
 
         # Now see which flips are permitted and calculate hashes for those.
         flips = self.get_property(Pattern.PROPERTY_FLIPS_ALLOWED)
-        if flips & Pattern.Flip.HORIZ:
+        if flips & Pattern.Flip.HORIZ == Pattern.Flip.HORIZ:
             self._flip_to_hash[Pattern.Flip.HORIZ] = self._calculate_hash_for_flip(Pattern.Flip.HORIZ)
-        if flips & Pattern.Flip.VERT:
+        if flips & Pattern.Flip.VERT == Pattern.Flip.VERT:
             self._flip_to_hash[Pattern.Flip.VERT] = self._calculate_hash_for_flip(Pattern.Flip.VERT)
-        if flips & Pattern.Flip.HORIZ_VERT:
+        if flips & Pattern.Flip.HORIZ_VERT == Pattern.Flip.HORIZ_VERT:
             self._flip_to_hash[Pattern.Flip.HORIZ_VERT] = self._calculate_hash_for_flip(Pattern.Flip.HORIZ_VERT)
 
 
