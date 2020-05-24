@@ -8,10 +8,12 @@ from ColorRemap import ColorRemap
 from StagingPalette import StagingPalette
 from ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
 from FinalPalette import FinalPalette
+from Pattern import Pattern
 import Quantize
 from Interval import Interval
 from IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
 from BitSet import BitSet
+from PatternsIntoPatternHashMapsEvaluator import PatternsIntoPatternHashMapsEvaluator
 
 def demo_colors():
     # Source nodes
@@ -437,11 +439,88 @@ def demo_VRAM():
 
     print("Done!")
 
+def demo_unique_tiles():
+    ##############################################################################
+    # PIXEL ARRAYS
+    parent_image = Image.open("font.png").convert("RGB")
+
+    pixel_arrays = []
+
+    # Load the image and then divvy up into separate tiles.
+    pattern_width = 8
+    pattern_height = 8
+
+    for start_y in range(0, parent_image.height, pattern_height):
+        for start_x in range(0, parent_image.width, pattern_width):
+            px_array = PixelArray(parent_image, start_x, start_y, pattern_width, pattern_height)
+            px_array.quantize((8,8,8), (2,2,2))
+
+            pixel_arrays.append(px_array)
+
+    ##############################################################################
+    # PATTERNS
+    patterns = []
+    pattern_property_map_all_flips =  {
+        Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ
+    }
+    for pixel_array in pixel_arrays:
+        pattern = Pattern(pixel_array=pixel_array, initial_properties_map=pattern_property_map_all_flips)
+        patterns.append(pattern)
+
+    ##############################################################################
+    # PATTERN SOLVING
+    dest_map = {}
+    dest_maps = [dest_map]
+
+    solver = ConstraintSolver(sources=patterns, destinations=dest_maps, evaluator_class=PatternsIntoPatternHashMapsEvaluator, debugging=None)
+    while((len(solver.solutions) == 0) and (solver.is_exhausted() == False)):
+        solver.update()
+
+    # How'd we do?
+    solution = solver.solutions[0]
+    solver.apply_solution(solution)
+
+    print(f"Started with {len(patterns)} patterns, and resulted in {len(dest_map.values())} after solving.")
+
+    for unique_hash, pattern_flip_tuple_list in dest_map.items():
+        if len(pattern_flip_tuple_list) > 1:
+            match_list_strs = []
+            match_list_strs.append(f"Patterns sharing hash {unique_hash}: ")
+            for pattern_flip_tuple in pattern_flip_tuple_list:
+                match_list_strs.append(f"({pattern_flip_tuple[0]} flipped: {pattern_flip_tuple[1].name})")
+            final_str = "".join(match_list_strs)
+
+            print(final_str)
+
+    ##############################################################################
+    # PATTERN REMAPPING
+    # (note:  NOT nametable mapping:  that requires VRAM locs!  This is showing
+    # the remapped original set of patterns to their new ones, plus flips.
+    src_index_to_dest_pattern_tuple_list = [None] * len(patterns)
+    for pattern_flip_tuple_list in dest_map.values():
+        # The first item in the list is the canonical pattern.
+        canonical_tuple = pattern_flip_tuple_list[0]
+        src_index_to_dest_pattern_tuple_list[canonical_tuple[0]] = canonical_tuple
+        
+        # All subsequent ones in the list point to this pattern.
+        for pattern_flip_idx in range(1, len(pattern_flip_tuple_list)):
+            pattern_flip_tuple = pattern_flip_tuple_list[pattern_flip_idx]
+
+            src_index_to_dest_pattern_tuple_list[pattern_flip_tuple[0]] = (canonical_tuple[0], pattern_flip_tuple[1])
+
+    for remap_tuple_idx in range(len(src_index_to_dest_pattern_tuple_list)):
+        dest_pattern_tuple = src_index_to_dest_pattern_tuple_list[remap_tuple_idx]
+        print(f"{remap_tuple_idx}: {dest_pattern_tuple[0]}, {dest_pattern_tuple[1].name}")
+
+    print("Done!")
+
 
 #demo_colors()
 
 #demo_font()
 
-demo_flags()
+#demo_flags()
 
-demo_VRAM()
+#demo_VRAM()
+
+demo_unique_tiles()
