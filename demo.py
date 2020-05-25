@@ -510,7 +510,7 @@ def demo_nametable():
     flags_pixel_array = PixelArray(flags_image, 0, 0, flags_image.width, flags_image.height)
     flags_pixel_array.quantize((8,8,8), (2,2,2))
 
-    src_pixel_arrays = [font_image, flags_image]
+    src_pixel_arrays = [font_pixel_array, flags_pixel_array]
 
     ##############################################################################
     # COLOR REMAP
@@ -598,7 +598,7 @@ def demo_nametable():
                 remapped_indices = []
                 for y in range(start_y, start_y + pattern_height):
                     for x in range(start_x, start_x + pattern_width):
-                        pixel = src_pixel_array.getpixel((x, y))
+                        pixel = src_pixel_array.get_pixel_value(x, y)
                         remapped_index = color_remap.convert_pixel_value_to_staging_index(pixel)
                         remapped_indices.append(remapped_index)
                 
@@ -614,8 +614,8 @@ def demo_nametable():
     dest_map = {}
     dest_maps = [dest_map]
 
-    src_idx_to_dest_idx_flip_lists = []
-    unique_src_pattern_lists = []
+    unique_patterns_lists = []
+    src_idx_to_dest_pattern_flip_lists = []
 
     # Execute a solver for each pattern set, but we'll merge all into the same destination.
     for pattern_set in src_pattern_sets:
@@ -627,40 +627,37 @@ def demo_nametable():
         solver.apply_solution(solution)
 
         # Go through the solution and find the ones that were *added*, as these will be
-        # considered our "true" patterns.  All those that *matched* will point to them.
+        # considered our "unique" patterns.  All those that *matched* will point to them.
         # Example:  
         #   'b' is index 1, and 'c' is index 2, and 'd' is index 3.
         #   'b' and 'd' are horizontal flips, while 'c' is its own thing.
-        #   Our map consist of:
-        #   <hash of b>: [(1, No Flip), (3, Horizontal Flip)]
-        #   <hash of c>: [(2, No Flip)]
         #
         #   'b' points to 'b', since it was the original.
         #   'c' points to 'c', for the same reason.
         #   'd' points to 'b', with a horizontal flip.
-        src_idx_to_dest_idx_flip_list = []
-        unique_src_idx_list = []
-        for src_flip_list in dest_map.values():
-            # The first one was the one added, and is the "true" pattern.
-            src_flip_tuple = src_flip_list[0]
-            src_idx = src_flip_tuple[0]
-            src_flip = src_flip_tuple[1]
-            dest_idx = src_idx
-            dest_tuple = (dest_idx, src_flip)
-            src_idx_to_dest_idx_flip_list[src_idx] = dest_tuple
+        #
+        #   So we have 2 unique patterns ('b' and 'c'), and 'd' points to 'b' with a flip.
+        unique_patterns_list = []
+        src_idx_to_unique_flip_list = [None] * len(pattern_set)
+        for move in solution:
+            change_list = move.change_list
 
-            # Subsequent ones in the list will ALSO point to the dest pattern.
-            for src_flip_tuple_idx in range(1, len(src_flip_list)):
-                src_flip_tuple = src_flip_list[src_flip_tuple_idx]
-                src_idx = src_flip_tuple[0]
-                src_flip = src_flip_tuple[1]
-                dest_tuple = (dest_idx, src_flip)
-                src_idx_to_dest_idx_flip_list[src_idx] = dest_tuple
+            unique_pattern = None
+            if change_list.matching_pattern_object_ref is None:
+                # Add this one to the unique list.
+                unique_pattern = pattern_set[move.source_index]
+                unique_patterns_list.append(unique_pattern)
+            else:
+                # Get the unique pattern we matched out of the change list.
+                unique_pattern = change_list.matching_pattern_object_ref()
 
-        src_idx_to_dest_idx_flip_lists.append(src_idx_to_dest_idx_flip_list)
+            # Now add the src -> unique + flip.
+            src_idx_to_unique_flip_list[move.source_index] = (unique_pattern, change_list.flips_to_match)
 
+        unique_patterns_lists.append(unique_patterns_list)
+        src_idx_to_dest_pattern_flip_lists.append(src_idx_to_unique_flip_list)
 
-
+    print("Done!")
 
 #demo_colors()
 
@@ -670,6 +667,6 @@ def demo_nametable():
 
 #demo_VRAM()
 
-demo_unique_tiles()
+#demo_unique_tiles()
 
-#demo_nametable()
+demo_nametable()
