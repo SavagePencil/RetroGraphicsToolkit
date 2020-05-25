@@ -15,6 +15,7 @@ from IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
 from BitSet import BitSet
 from PatternsIntoPatternHashMapsEvaluator import PatternsIntoPatternHashMapsEvaluator
 from IndexedColorArray import IndexedColorArray
+from NameTableEntry import NameTableEntry
 
 def demo_colors():
     # Source nodes
@@ -709,6 +710,41 @@ def demo_nametable():
             unique_pattern = unique_pattern_list[unique_idx]
             VRAM_pos = VRAM_dest + unique_idx
             pattern_to_VRAM_loc_map[unique_pattern] = VRAM_pos
+
+    ##############################################################################
+    # NAMETABLE CREATION
+    # Tie it all together to create an array of patterns, flips, palettes, and
+    # VRAM locations.
+    nametables = []
+    for nametable_idx in range(len(src_pattern_sets)):
+        nametable = []
+
+        # Let's find our palette index.
+        color_remap = color_remaps[nametable_idx]
+        our_palette = color_remap.staging_palette
+        for palette_idx in range(len(staging_palettes)):
+            staging_palette = staging_palettes[palette_idx]
+            if staging_palette is our_palette:
+                break
+
+        # Iterate through all the source patterns.
+        src_pattern_set = src_pattern_sets[nametable_idx]
+        for src_pattern_idx in range(len(src_pattern_set)):
+            # Find its unique correspondence, and any flips.
+            src_idx_to_dest_pattern_flip_list = src_idx_to_dest_pattern_flip_lists[nametable_idx]
+            unique_flip_tuple = src_idx_to_dest_pattern_flip_list[src_pattern_idx]
+
+            unique_pattern = unique_flip_tuple[0]
+            flips = unique_flip_tuple[1]
+
+            # Find the VRAM loc.
+            VRAM_pos = pattern_to_VRAM_loc_map[unique_pattern]
+
+            # We have everything we need to build the nametable entry.
+            nametable_entry = NameTableEntry(VRAM_loc=VRAM_pos, palette_index=palette_idx, flips=flips)
+            nametable.append(nametable_entry)
+        
+        nametables.append(nametable)
 
     print("Done!")
 
