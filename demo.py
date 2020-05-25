@@ -469,7 +469,7 @@ def demo_unique_tiles():
     # Count uniques.
     unique_patterns = []
     for move in solution:
-        matched = move.change_list.matching_pattern_object_hash
+        matched = move.change_list.matching_pattern_object_ref
         if matched is None:
             # We didn't match anybody else, so we're unique.
             src_pattern_idx = move.source_index
@@ -481,19 +481,19 @@ def demo_unique_tiles():
     # Print matches.
     for move in solution:
         change_list = move.change_list
-        if change_list.matching_pattern_object_hash is not None:
-            # See if we can find the pattern object with this hash.
+        if change_list.matching_pattern_object_ref is not None:
+            # See if we can find the pattern object used.
             matched_pattern_idx = None
+            matched_pattern = change_list.matching_pattern_object_ref()
             for pattern_idx in range(len(patterns)):
                 test_pattern = patterns[pattern_idx]
-                obj_hash = hash(test_pattern)
-                if obj_hash == change_list.matching_pattern_object_hash:
+                if test_pattern == matched_pattern:
                     matched_pattern_idx = pattern_idx
                     break
 
             if matched_pattern_idx is None:
                 # Just print the hash
-                print(f"Pattern {move.source_index} matched a Pattern object with hash {change_list.matching_pattern_object_hash} with flips {change_list.flips_to_match.name}.")
+                print(f"Pattern {move.source_index} matched a Pattern object with hash {hash(change_list.matching_pattern_object_ref())} with flips {change_list.flips_to_match.name}.")
             else:
                 print(f"Pattern {move.source_index} matched Pattern {matched_pattern_idx} with flips {change_list.flips_to_match.name}.")
 
@@ -615,7 +615,7 @@ def demo_nametable():
     dest_maps = [dest_map]
 
     src_idx_to_dest_idx_flip_lists = []
-    unique_src_idx_lists = []
+    unique_src_pattern_lists = []
 
     # Execute a solver for each pattern set, but we'll merge all into the same destination.
     for pattern_set in src_pattern_sets:
