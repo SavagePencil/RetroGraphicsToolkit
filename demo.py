@@ -14,6 +14,7 @@ from Interval import Interval
 from IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
 from BitSet import BitSet
 from PatternsIntoPatternHashMapsEvaluator import PatternsIntoPatternHashMapsEvaluator
+from IndexedColorArray import IndexedColorArray
 
 def demo_colors():
     # Source nodes
@@ -102,15 +103,7 @@ def demo_font():
     px_array.quantize((8,8,8), (2,2,2))
 
     # Extract all unique colors
-    pixel_value_set = set()
-    unique_pixel_values_list = []
-
-    for pixel_value in px_array.pixels:
-        if pixel_value not in pixel_value_set:
-            # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
-            unique_pixel_values_list.append(pixel_value)
-            # Add it to the set for faster lookup (but it won't have a deterministic order).
-            pixel_value_set.add(pixel_value)
+    unique_pixel_values_list = px_array.generate_deterministic_unique_pixel_list()
     
     color_remap_font = ColorRemap({}, unique_pixel_values_list, special_color_remap)
     color_remaps.append(color_remap_font)
@@ -193,15 +186,15 @@ def demo_font():
             color_remap.final_palette_indices[color_idx] = final_idx
 
     ##############################################################################
-    # CONVERT TO INDEXED PATTERNS
+    # CONVERT TO INDEXED ARRAYS
     pattern_width = 8
     pattern_height = 8
-    patterns_indexed = []
+    indexed_arrays = []
 
     for start_y in range(0, px_array.height, pattern_height):
         for start_x in range(0, px_array.width, pattern_width):
             # Carve out each pattern.
-            pattern = []
+            remapped_indices = []
             for y in range(start_y, start_y + pattern_height):
                 for x in range(start_x, start_x + pattern_width):
                     pixel_value = px_array.get_pixel_value(x, y)
@@ -212,9 +205,9 @@ def demo_font():
                     # Find final palette slot.
                     final_palette_slot = color_remap_font.final_palette_indices[color_index]
 
-                    pattern.append(final_palette_slot)
+                    remapped_indices.append(final_palette_slot)
 
-            patterns_indexed.append(pattern)
+            indexed_arrays.append(IndexedColorArray(pattern_width, pattern_height, remapped_indices))
 
     ##############################################################################
     # CONVERT TO 1BPP PATTERNS
@@ -284,16 +277,8 @@ def demo_flags():
             pixel_arrays.append(px_array)
 
             # Extract all unique colors
-            pixel_value_set = set()
-            unique_pixel_values_list = []
+            unique_pixel_values_list = px_array.generate_deterministic_unique_pixel_list()
 
-            for pixel_value in px_array.pixels:
-                if pixel_value not in pixel_value_set:
-                    # This is a new, unique color.  Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
-                    unique_pixel_values_list.append(pixel_value)
-                    # Add it to the set for faster lookup (but it won't have a deterministic order).
-                    pixel_value_set.add(pixel_value)
-            
             color_remap = ColorRemap({}, unique_pixel_values_list, {})
             color_remaps.append(color_remap)
 
@@ -460,11 +445,12 @@ def demo_unique_tiles():
     ##############################################################################
     # PATTERNS
     patterns = []
-    pattern_property_map_all_flips =  {
+    pattern_property_map_flips =  {
         Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ
     }
     for pixel_array in pixel_arrays:
-        pattern = Pattern(pixel_array=pixel_array, initial_properties_map=pattern_property_map_all_flips)
+        index_array = pixel_array.generate_indexed_color_array()
+        pattern = Pattern(index_array=index_array, initial_properties_map=pattern_property_map_flips)
         patterns.append(pattern)
 
     ##############################################################################
@@ -480,39 +466,200 @@ def demo_unique_tiles():
     solution = solver.solutions[0]
     solver.apply_solution(solution)
 
-    print(f"Started with {len(patterns)} patterns, and resulted in {len(dest_map.values())} after solving.")
+    # Count uniques.
+    unique_patterns = []
+    for move in solution:
+        matched = move.change_list.matching_pattern_object_hash
+        if matched is None:
+            # We didn't match anybody else, so we're unique.
+            src_pattern_idx = move.source_index
+            unique_pattern = patterns[src_pattern_idx]
+            unique_patterns.append(unique_pattern)
 
-    for unique_hash, pattern_flip_tuple_list in dest_map.items():
-        if len(pattern_flip_tuple_list) > 1:
-            match_list_strs = []
-            match_list_strs.append(f"Patterns sharing hash {unique_hash}: ")
-            for pattern_flip_tuple in pattern_flip_tuple_list:
-                match_list_strs.append(f"({pattern_flip_tuple[0]} flipped: {pattern_flip_tuple[1].name})")
-            final_str = "".join(match_list_strs)
+    print(f"Started with {len(patterns)} patterns, and resulted in {len(unique_patterns)} after solving.")
 
-            print(final_str)
+    # Print matches.
+    for move in solution:
+        change_list = move.change_list
+        if change_list.matching_pattern_object_hash is not None:
+            # See if we can find the pattern object with this hash.
+            matched_pattern_idx = None
+            for pattern_idx in range(len(patterns)):
+                test_pattern = patterns[pattern_idx]
+                obj_hash = hash(test_pattern)
+                if obj_hash == change_list.matching_pattern_object_hash:
+                    matched_pattern_idx = pattern_idx
+                    break
 
-    ##############################################################################
-    # PATTERN REMAPPING
-    # (note:  NOT nametable mapping:  that requires VRAM locs!  This is showing
-    # the remapped original set of patterns to their new ones, plus flips.
-    src_index_to_dest_pattern_tuple_list = [None] * len(patterns)
-    for pattern_flip_tuple_list in dest_map.values():
-        # The first item in the list is the canonical pattern.
-        canonical_tuple = pattern_flip_tuple_list[0]
-        src_index_to_dest_pattern_tuple_list[canonical_tuple[0]] = canonical_tuple
-        
-        # All subsequent ones in the list point to this pattern.
-        for pattern_flip_idx in range(1, len(pattern_flip_tuple_list)):
-            pattern_flip_tuple = pattern_flip_tuple_list[pattern_flip_idx]
-
-            src_index_to_dest_pattern_tuple_list[pattern_flip_tuple[0]] = (canonical_tuple[0], pattern_flip_tuple[1])
-
-    for remap_tuple_idx in range(len(src_index_to_dest_pattern_tuple_list)):
-        dest_pattern_tuple = src_index_to_dest_pattern_tuple_list[remap_tuple_idx]
-        print(f"{remap_tuple_idx}: {dest_pattern_tuple[0]}, {dest_pattern_tuple[1].name}")
+            if matched_pattern_idx is None:
+                # Just print the hash
+                print(f"Pattern {move.source_index} matched a Pattern object with hash {change_list.matching_pattern_object_hash} with flips {change_list.flips_to_match.name}.")
+            else:
+                print(f"Pattern {move.source_index} matched Pattern {matched_pattern_idx} with flips {change_list.flips_to_match.name}.")
 
     print("Done!")
+
+def demo_nametable():
+    ##############################################################################
+    # PIXEL ARRAY
+    font_image = Image.open("font.png").convert("RGB")
+    font_pixel_array = PixelArray(font_image, 0, 0, font_image.width, font_image.height)
+    font_pixel_array.quantize((8,8,8), (2,2,2))
+
+    flags_image = Image.open("flags.png").convert("RGB")
+    flags_pixel_array = PixelArray(flags_image, 0, 0, flags_image.width, flags_image.height)
+    flags_pixel_array.quantize((8,8,8), (2,2,2))
+
+    src_pixel_arrays = [font_image, flags_image]
+
+    ##############################################################################
+    # COLOR REMAP
+    # Solve the color remap problem *FIRST*.  This will give us a set of indexed
+    # color arrays that we can use to find unique patterns.
+
+    # FONT
+    # Extract all unique colors
+    font_unique_pixel_values_list = font_pixel_array.generate_deterministic_unique_pixel_list()
+
+    # Font comes in as green.  Remap to white.
+    white_entry = ColorEntry()
+    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,255,255))
+    font_special_color_remap = {(0,255,0): white_entry}
+
+    font_color_remap = ColorRemap(initial_properties_map={}, unique_pixel_values_list=font_unique_pixel_values_list, color_remap=font_special_color_remap)
+
+    # FLAGS
+    # Extract all unique colors
+    flags_unique_pixel_values_list = flags_pixel_array.generate_deterministic_unique_pixel_list()
+
+    flags_color_remap = ColorRemap(initial_properties_map={}, unique_pixel_values_list=flags_unique_pixel_values_list, color_remap={})
+
+    # COLOR REMAPS
+    color_remaps = [font_color_remap, flags_color_remap]
+
+    ##############################################################################
+    # STAGING PALETTES
+    staging_palette_sprites = StagingPalette(16)
+    staging_palette_bg_only = StagingPalette(16)
+
+    staging_palettes = [staging_palette_sprites, staging_palette_bg_only]
+
+    ##############################################################################
+    # SOLUTION FOR COLOR REMAPS -> STAGING PALETTES
+    remap_to_staging_solver = ConstraintSolver(color_remaps, staging_palettes, ColorRemapsIntoStagingPalettesEvaluator, None)
+    while (len(remap_to_staging_solver.solutions) == 0) and (remap_to_staging_solver.is_exhausted() == False):
+        remap_to_staging_solver.update()
+
+    # TODO find the best one.
+    remap_to_staging_solution = remap_to_staging_solver.solutions[0]
+
+    for move in remap_to_staging_solution:
+        # Let the corresponding color remap process these moves.
+        source_remap = color_remaps[move.source_index]
+        source_remap.remap_to_staging_palette(move, staging_palettes)
+
+    # Now apply the solution to the staging palettes.
+    remap_to_staging_solver.apply_solution(remap_to_staging_solution)
+
+    ##############################################################################
+    # SOURCE PATTERN CREATION
+    # We'll create a unique pattern for each entry in the image.  Later we'll
+    # merge those that we want to dupe-strip (or can be flipped to be dupes).
+    src_pattern_sets = []
+
+    pattern_property_map_flips =  {
+        Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ
+    }
+
+    # Go through each large image and dice it up into smaller Patterns.
+    for image_array_idx in range(len(src_pixel_arrays)):
+        src_pixel_array = src_pixel_arrays[image_array_idx]
+        color_remap = color_remaps[image_array_idx]
+
+        src_patterns = []
+
+        pattern_width = 8
+        pattern_height = 8
+
+        for start_y in range(0, src_pixel_array.height, pattern_height):
+            for start_x in range(0, src_pixel_array.width, pattern_width):
+                # Convert each section of pixels into the *staging* palette indices.
+                # This may seem backwards.  Why not just rez up a pixel array, and then
+                # get the indexed color array?
+                # Here's why we do it this way:
+                #   We want a consistent color mapping for the WHOLE image.  This will
+                #   let us load the whole pattern data with one color remap.  Let's say
+                #   we have a pattern in our image that is totally black, and another
+                #   pattern that is totally white.  If we create an IndexedColorArray
+                #   for each of these patterns, they will be identical, because they
+                #   have only one color (they'll both be all zeroes).
+                #   But we've already mapped the colors for the image as a whole, 
+                #   so those two will get unique values when remapped against them.
+                remapped_indices = []
+                for y in range(start_y, start_y + pattern_height):
+                    for x in range(start_x, start_x + pattern_width):
+                        pixel = src_pixel_array.getpixel((x, y))
+                        remapped_index = color_remap.convert_pixel_value_to_staging_index(pixel)
+                        remapped_indices.append(remapped_index)
+                
+                indexed_array = IndexedColorArray(width=pattern_width, height=pattern_height, indexed_array=remapped_indices)
+                pattern = Pattern(index_array=indexed_array, initial_properties_map=pattern_property_map_flips)
+                src_patterns.append(pattern)
+
+        # Add all source patterns.
+        src_pattern_sets.append(src_patterns)
+
+    ##############################################################################
+    # UNIQUE PATTERN SOLVING
+    dest_map = {}
+    dest_maps = [dest_map]
+
+    src_idx_to_dest_idx_flip_lists = []
+    unique_src_idx_lists = []
+
+    # Execute a solver for each pattern set, but we'll merge all into the same destination.
+    for pattern_set in src_pattern_sets:
+        solver = ConstraintSolver(sources=pattern_set, destinations=dest_maps, evaluator_class=PatternsIntoPatternHashMapsEvaluator, debugging=None)
+        while((len(solver.solutions) == 0) and (solver.is_exhausted() == False)):
+            solver.update()
+
+        solution = solver.solutions[0]
+        solver.apply_solution(solution)
+
+        # Go through the solution and find the ones that were *added*, as these will be
+        # considered our "true" patterns.  All those that *matched* will point to them.
+        # Example:  
+        #   'b' is index 1, and 'c' is index 2, and 'd' is index 3.
+        #   'b' and 'd' are horizontal flips, while 'c' is its own thing.
+        #   Our map consist of:
+        #   <hash of b>: [(1, No Flip), (3, Horizontal Flip)]
+        #   <hash of c>: [(2, No Flip)]
+        #
+        #   'b' points to 'b', since it was the original.
+        #   'c' points to 'c', for the same reason.
+        #   'd' points to 'b', with a horizontal flip.
+        src_idx_to_dest_idx_flip_list = []
+        unique_src_idx_list = []
+        for src_flip_list in dest_map.values():
+            # The first one was the one added, and is the "true" pattern.
+            src_flip_tuple = src_flip_list[0]
+            src_idx = src_flip_tuple[0]
+            src_flip = src_flip_tuple[1]
+            dest_idx = src_idx
+            dest_tuple = (dest_idx, src_flip)
+            src_idx_to_dest_idx_flip_list[src_idx] = dest_tuple
+
+            # Subsequent ones in the list will ALSO point to the dest pattern.
+            for src_flip_tuple_idx in range(1, len(src_flip_list)):
+                src_flip_tuple = src_flip_list[src_flip_tuple_idx]
+                src_idx = src_flip_tuple[0]
+                src_flip = src_flip_tuple[1]
+                dest_tuple = (dest_idx, src_flip)
+                src_idx_to_dest_idx_flip_list[src_idx] = dest_tuple
+
+        src_idx_to_dest_idx_flip_lists.append(src_idx_to_dest_idx_flip_list)
+
+
 
 
 #demo_colors()
@@ -524,3 +671,5 @@ def demo_unique_tiles():
 #demo_VRAM()
 
 demo_unique_tiles()
+
+#demo_nametable()
