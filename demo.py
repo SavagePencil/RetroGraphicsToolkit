@@ -657,6 +657,59 @@ def demo_nametable():
         unique_patterns_lists.append(unique_patterns_list)
         src_idx_to_dest_pattern_flip_lists.append(src_idx_to_unique_flip_list)
 
+    ##############################################################################
+    # VRAM POSITIONING
+    # Create intervals for each of the unique tiles.
+
+    intervals = []
+
+    # The font must begin at a specific location.
+    font_VRAM_interval = Interval.create_fixed_length_at_start_point(20, len(unique_patterns_lists[0]))
+    intervals.append(font_VRAM_interval)
+
+    # Can go anywhere.  We'll treat them as contiguous, but we could just as easily split them up into multiples.
+    flag_VRAM_interval = Interval(begin=0, end=448, length=len(unique_patterns_lists[1]))
+    intervals.append(flag_VRAM_interval)
+
+    # Find a home for them.
+    bitsets = []
+    VRAMPositions = BitSet(448)
+    bitsets.append(VRAMPositions)
+
+    interval_to_VRAM_solver = ConstraintSolver(sources=intervals, destinations=bitsets, evaluator_class=IntervalsToBitSetsEvaluator, debugging=None)
+    while (len(interval_to_VRAM_solver.solutions) == 0) and (interval_to_VRAM_solver.is_exhausted() == False):
+        interval_to_VRAM_solver.update()
+
+    # How'd the solution go?
+    solution = interval_to_VRAM_solver.solutions[0]
+
+    # Track where each pattern interval will go.
+    VRAM_dests = [None] * len(intervals)
+
+    for move in solution:
+        # The "source" will be one of our intervals, and since we're only doing one BitSet, our "destination" will always be the VRAMPositions array.
+        # Dig into the change list to figure out which slot was actually chosen.
+        source_interval = intervals[move.source_index]
+        dest_interval = move.change_list.chosen_interval
+        if dest_interval.begin == dest_interval.end:
+            print(f"Interval {move.source_index}: ({source_interval.begin}, {source_interval.end}) with length {source_interval.length} will occupy location {dest_interval.begin}.")
+        else:
+            print(f"Interval {move.source_index}: ({source_interval.begin}, {source_interval.end}) with length {source_interval.length} will occupy locations {dest_interval.begin} thru {dest_interval.end}")
+
+        VRAM_dests[move.source_index] = dest_interval.begin
+
+    pattern_to_VRAM_loc_map = {}
+
+    # Map each unique pattern to its VRAM loc.
+    for unique_list_idx in range(len(unique_patterns_lists)):
+        unique_pattern_list = unique_patterns_lists[unique_list_idx]
+        VRAM_dest = VRAM_dests[unique_list_idx]
+
+        for unique_idx in range(len(unique_pattern_list)):
+            unique_pattern = unique_pattern_list[unique_idx]
+            VRAM_pos = VRAM_dest + unique_idx
+            pattern_to_VRAM_loc_map[unique_pattern] = VRAM_pos
+
     print("Done!")
 
 #demo_colors()
