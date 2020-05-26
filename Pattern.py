@@ -75,27 +75,14 @@ class Pattern(PropertyCollection):
             raise Pattern.InvalidFlipEnumerationError(flip)
 
         new_indexed_array = []
-        value_to_index = {}
 
-        # Walk through the pixel array according to the flip direction.
-        # We'll create a map of pixels -> unique indices, along with
-        # an array of the indexed image.
+        # Walk through the array according to the flip direction.
         for y in range(range_params_y[0], range_params_y[1], range_params_y[2]):
             for x in range(range_params_x[0], range_params_x[1], range_params_x[2]):
                 value = self.index_array.get_value(x, y)
 
-                idx = 0
-                if value in value_to_index:
-                    # Already seen it.  Get the index for it.
-                    idx = value_to_index[value]
-                else:
-                    # This is a new, unique color.  
-                    # Add it *IN THE DETERMINISTIC ORDER IT WAS DISCOVERED*.
-                    idx = len(value_to_index.values())
-                    value_to_index[value] = idx
-
                 # Append the unique color index.
-                new_indexed_array.append(idx)
+                new_indexed_array.append(value)
 
         # Create the object version.
         ret_val = IndexedColorArray(self.index_array.width, self.index_array.height, new_indexed_array)

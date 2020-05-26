@@ -638,22 +638,36 @@ def demo_nametable():
         #   'd' points to 'b', with a horizontal flip.
         #
         #   So we have 2 unique patterns ('b' and 'c'), and 'd' points to 'b' with a flip.
-        unique_patterns_list = []
         src_idx_to_unique_flip_list = [None] * len(pattern_set)
         for move in solution:
             change_list = move.change_list
 
-            unique_pattern = None
+            dest_pattern = None
             if change_list.matching_pattern_object_ref is None:
                 # Add this one to the unique list.
-                unique_pattern = pattern_set[move.source_index]
-                unique_patterns_list.append(unique_pattern)
+                dest_pattern = pattern_set[move.source_index]
             else:
-                # Get the unique pattern we matched out of the change list.
-                unique_pattern = change_list.matching_pattern_object_ref()
+                # Get the pattern we matched out of the change list.
+                dest_pattern = change_list.matching_pattern_object_ref()
 
-            # Now add the src -> unique + flip.
-            src_idx_to_unique_flip_list[move.source_index] = (unique_pattern, change_list.flips_to_match)
+            # Now add the src -> dest + flip.
+            src_idx_to_unique_flip_list[move.source_index] = (dest_pattern, change_list.flips_to_match)
+
+        # Arrange the uniques in corresponding order to the source indices.
+        # We have to do this as a separate pass because the order of moves
+        # (the loop above) is non-deterministic, and we want to retain the
+        # original order of the source indices.
+        unique_patterns_list = []
+        for source_idx in range(len(src_idx_to_unique_flip_list)):
+            source_pattern = pattern_set[source_idx]
+
+            # Is this one unique?
+            dest_flip_tuple = src_idx_to_unique_flip_list[source_idx]
+            dest_pattern = dest_flip_tuple[0]
+
+            if source_pattern == dest_pattern:
+                # If source matches dest, we aren't remapped (i.e., we're unique.)
+                unique_patterns_list.append(dest_pattern)
 
         unique_patterns_lists.append(unique_patterns_list)
         src_idx_to_dest_pattern_flip_lists.append(src_idx_to_unique_flip_list)
