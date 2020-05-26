@@ -1,33 +1,33 @@
-from Property import PropertyDefinition, PropertyCollection
+from Intention import IntentionDefinition, IntentionCollection
 
 class ColorEntry:
     # Static vars
-    PROPERTY_COLOR = "Color"
-    PROPERTY_SLOT = "Slot"
-    PROPERTY_NAME = "Name"
-    PROPERTY_FORCED_PALETTE = "RequiresPalette"
+    INTENTION_COLOR = "Color"
+    INTENTION_SLOT = "Slot"
+    INTENTION_NAME = "Name"
+    INTENTION_FORCED_PALETTE = "RequiresPalette"
 
-    sProperty_def_map = { 
-        PROPERTY_COLOR: PropertyDefinition(False, True)
-        , PROPERTY_SLOT: PropertyDefinition(False, False)
-        , PROPERTY_FORCED_PALETTE: PropertyDefinition(False, False)
-        , PROPERTY_NAME: PropertyDefinition(True, False) }
+    sIntention_def_map = { 
+        INTENTION_COLOR: IntentionDefinition(is_unique=False, is_required=True)
+        , INTENTION_SLOT: IntentionDefinition(is_unique=False, is_required=False)
+        , INTENTION_FORCED_PALETTE: IntentionDefinition(is_unique=False, is_required=False)
+        , INTENTION_NAME: IntentionDefinition(is_unique=True, is_required=False) }
 
     def __init__(self):
-        self.properties = PropertyCollection(ColorEntry.sProperty_def_map)
+        self.intentions = IntentionCollection(ColorEntry.sIntention_def_map)
 
     @classmethod
     def copy_construct_from(cls, rhs: 'ColorEntry') -> 'ColorEntry':
         new_entry = cls()
-        new_entry.properties = PropertyCollection.copy_construct_from(rhs.properties)
+        new_entry.intentions = IntentionCollection.copy_construct_from(rhs.intentions)
 
         return new_entry
 
     def is_empty(self) -> bool:
-        # A ColorEntry is considered empty if it has no properties set.
-        for prop_name in ColorEntry.sProperty_def_map.keys():
-            if self.properties.get_property(prop_name) is not None:
-                # We're not empty if we have a property set
+        # A ColorEntry is considered empty if it has no intentions set.
+        for prop_name in ColorEntry.sIntention_def_map.keys():
+            if self.intentions.get_intention(prop_name) is not None:
+                # We're not empty if we have an intention set
                 return False
         
         # We're empty!

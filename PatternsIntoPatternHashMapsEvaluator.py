@@ -144,7 +144,7 @@ class PatternsIntoPatternHashMapsEvaluator(Evaluator):
 
     def _get_changes_to_fit(self, destination_index: int, destination: Mapping[int, ReferenceType]) -> Optional[List['PatternsIntoPatternHashMapsEvaluator.ChangeList']]:
         # Make sure this pattern is allowed to go into this destination.
-        assigned_pattern_set = self.source.get_property(Pattern.PROPERTY_SPECIFIC_PATTERN_SET_INDEX)
+        assigned_pattern_set = self.source.get_intention(Pattern.INTENTION_SPECIFIC_PATTERN_SET_INDEX)
         if (assigned_pattern_set is not None) and (assigned_pattern_set != destination_index):
             # This pattern wants to be assigned to a specific pattern set, and it's not this one.
             return None

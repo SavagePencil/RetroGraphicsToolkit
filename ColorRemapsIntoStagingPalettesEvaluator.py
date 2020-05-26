@@ -125,7 +125,7 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
 
     def _get_changes_to_fit(self, destination_index: int, destination: StagingPalette) -> Optional[List['ColorRemapsIntoStagingPalettesEvaluator.ChangeList']]:
         # Check this remap to see if it has a palette assigned.  If it does, does it match the destination?
-        assigned_palette = self.source.get_property(ColorRemap.PROPERTY_PALETTE)
+        assigned_palette = self.source.get_intention(ColorRemap.INTENTION_PALETTE)
         if (assigned_palette is not None) and (assigned_palette != destination_index):
             # We have a remap that wants to be assigned to a specific palette, and it's not this one.
             return None
@@ -159,8 +159,8 @@ class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
         # For every color that matches (i.e., no changes), add to the score
         for color_into_color_move in change_list.color_into_color_moves:
             # Go through each color-into-color move.
-            property_name_value_tuple_list = color_into_color_move.change_list.property_name_value_tuple_list
-            if len(property_name_value_tuple_list) == 0:
+            intention_name_value_tuple_list = color_into_color_move.change_list.intention_name_value_tuple_list
+            if len(intention_name_value_tuple_list) == 0:
                 score = score + ColorRemapsIntoStagingPalettesEvaluator.SCORE_ADJUST_EACH_COLOR_MATCHING
 
         return score

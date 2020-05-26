@@ -1,23 +1,23 @@
 from typing import List, Mapping
-from Property import PropertyCollection, PropertyDefinition
+from Intention import IntentionCollection, IntentionDefinition
 from ColorEntry import ColorEntry
 from StagingPalette import StagingPalette
 from constraint_solver import Move
 
-class ColorRemap(PropertyCollection):
+class ColorRemap(IntentionCollection):
     # Static vars
-    PROPERTY_PALETTE = "Palette"
+    INTENTION_PALETTE = "Palette"
 
-    sProperty_def_map = { 
-        PROPERTY_PALETTE: PropertyDefinition(False, True)
+    sIntention_def_map = { 
+        INTENTION_PALETTE: IntentionDefinition(False, True)
     }
 
-    def __init__(self, initial_properties_map: Mapping[str, object], unique_pixel_values_list: List[object], color_remap: Mapping[object, ColorEntry]):
-        super().__init__(ColorRemap.sProperty_def_map)
+    def __init__(self, initial_intentions_map: Mapping[str, object], unique_pixel_values_list: List[object], color_remap: Mapping[object, ColorEntry]):
+        super().__init__(ColorRemap.sIntention_def_map)
 
-        # Set the initial properties
-        for initial_prop_name, initial_prop_val in initial_properties_map.items():
-            self.attempt_set_property(initial_prop_name, initial_prop_val)
+        # Set the initial intentions
+        for initial_prop_name, initial_prop_val in initial_intentions_map.items():
+            self.attempt_set_intention(initial_prop_name, initial_prop_val)
 
         # Maps source pixel values -> index values
         self.source_pixel_value_to_index = {}
@@ -40,14 +40,14 @@ class ColorRemap(PropertyCollection):
             else:
                 # Case B:  No remap was specified.
                 new_entry = ColorEntry()
-                new_entry.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, pixel_value)
+                new_entry.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, pixel_value)
                 self.color_entries.append(new_entry)
 
         # Now see if any of our remap colors force this graphic to a specific palette.
         for color_entry in self.color_entries:
-            forced_pal = color_entry.properties.get_property(ColorEntry.PROPERTY_FORCED_PALETTE)
+            forced_pal = color_entry.intentions.get_intention(ColorEntry.INTENTION_FORCED_PALETTE)
             if forced_pal is not None:
-                self.attempt_set_property(ColorRemap.PROPERTY_PALETTE, forced_pal)
+                self.attempt_set_intention(ColorRemap.INTENTION_PALETTE, forced_pal)
 
         # Track all of our staging palette values.
         self.staging_palette = None

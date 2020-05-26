@@ -1,9 +1,9 @@
 from typing import List, Mapping, Optional
 from enum import IntFlag
-from Property import PropertyCollection, PropertyDefinition
+from Intention import IntentionCollection, IntentionDefinition
 from IndexedColorArray import IndexedColorArray
 
-class Pattern(PropertyCollection):
+class Pattern(IntentionCollection):
     class InvalidFlipEnumerationError(Exception):
         def __init__(self, invalid_enum):
             self.invalid_enum = invalid_enum
@@ -17,21 +17,21 @@ class Pattern(PropertyCollection):
 
 
     # Static Vars
-    PROPERTY_FLIPS_ALLOWED = "Flips Allowed"
+    INTENTION_FLIPS_ALLOWED = "Flips Allowed"
 
-    PROPERTY_SPECIFIC_PATTERN_SET_INDEX = "Pattern Set Index"
+    INTENTION_SPECIFIC_PATTERN_SET_INDEX = "Pattern Set Index"
 
-    sProperty_def_map = {
-          PROPERTY_FLIPS_ALLOWED: PropertyDefinition(is_unique=False, is_required=True)
-        , PROPERTY_SPECIFIC_PATTERN_SET_INDEX: PropertyDefinition(is_unique=False, is_required=False)
+    sIntention_def_map = {
+          INTENTION_FLIPS_ALLOWED: IntentionDefinition(is_unique=False, is_required=True)
+        , INTENTION_SPECIFIC_PATTERN_SET_INDEX: IntentionDefinition(is_unique=False, is_required=False)
     }
 
-    def __init__(self, index_array: IndexedColorArray, initial_properties_map: Mapping[str, object]):
-        super().__init__(Pattern.sProperty_def_map)
+    def __init__(self, index_array: IndexedColorArray, initial_intentions_map: Mapping[str, object]):
+        super().__init__(Pattern.sIntention_def_map)
 
-        # Set the initial properties
-        for initial_prop_name, initial_prop_val in initial_properties_map.items():
-            self.attempt_set_property(initial_prop_name, initial_prop_val)
+        # Set the initial intentions
+        for initial_prop_name, initial_prop_val in initial_intentions_map.items():
+            self.attempt_set_intention(initial_prop_name, initial_prop_val)
 
         self.index_array = index_array
 
@@ -44,7 +44,7 @@ class Pattern(PropertyCollection):
         self._flip_to_hash[Pattern.Flip.NONE] = self._calculate_hash_for_flip(Pattern.Flip.NONE)
 
         # Now see which flips are permitted and calculate hashes for those.
-        flips = self.get_property(Pattern.PROPERTY_FLIPS_ALLOWED)
+        flips = self.get_intention(Pattern.INTENTION_FLIPS_ALLOWED)
         if flips & Pattern.Flip.HORIZ == Pattern.Flip.HORIZ:
             self._flip_to_hash[Pattern.Flip.HORIZ] = self._calculate_hash_for_flip(Pattern.Flip.HORIZ)
         if flips & Pattern.Flip.VERT == Pattern.Flip.VERT:

@@ -22,42 +22,42 @@ def demo_colors():
     source_node_list = []
 
     src_red_1 = ColorEntry()
-    src_red_1.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,0,0))
-    src_red_1.properties.attempt_set_property(ColorEntry.PROPERTY_SLOT, 1)
+    src_red_1.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (255,0,0))
+    src_red_1.intentions.attempt_set_intention(ColorEntry.INTENTION_SLOT, 1)
     source_node_list.append(src_red_1)
 
     src_red_3 = ColorEntry()
-    src_red_3.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,0,0))
-    src_red_3.properties.attempt_set_property(ColorEntry.PROPERTY_SLOT, 3)
+    src_red_3.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (255,0,0))
+    src_red_3.intentions.attempt_set_intention(ColorEntry.INTENTION_SLOT, 3)
     source_node_list.append(src_red_3)
 
     src_green_2 = ColorEntry()
-    src_green_2.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (0,255,0))
-    src_green_2.properties.attempt_set_property(ColorEntry.PROPERTY_SLOT, 2)
+    src_green_2.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (0,255,0))
+    src_green_2.intentions.attempt_set_intention(ColorEntry.INTENTION_SLOT, 2)
     source_node_list.append(src_green_2)
 
     src_blue = ColorEntry()
-    src_blue.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (0,0,255))
+    src_blue.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (0,0,255))
     source_node_list.append(src_blue)
 
     src_yellow = ColorEntry()
-    src_yellow.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,255,0))
+    src_yellow.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (255,255,0))
     source_node_list.append(src_yellow)
 
     # Dest nodes
     dest_node_list = []
 
     dest_blue_0 = ColorEntry()
-    dest_blue_0.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (0,0,255))
-    dest_blue_0.properties.attempt_set_property(ColorEntry.PROPERTY_SLOT, 0)
+    dest_blue_0.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (0,0,255))
+    dest_blue_0.intentions.attempt_set_intention(ColorEntry.INTENTION_SLOT, 0)
     dest_node_list.append(dest_blue_0)
 
     dest_green = ColorEntry()
-    dest_green.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (0,255,0))
+    dest_green.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (0,255,0))
     dest_node_list.append(dest_green)
 
     dest_red = ColorEntry()
-    dest_red.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,0,0))
+    dest_red.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (255,0,0))
     dest_node_list.append(dest_red)
 
     dest_clear_1 = ColorEntry()
@@ -94,9 +94,9 @@ def demo_font():
 
     # Font comes in as green.  Remap to white.
     white_entry = ColorEntry()
-    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,255,255))
-    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_SLOT, 7)
-    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_FORCED_PALETTE, 1)
+    white_entry.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (255,255,255))
+    white_entry.intentions.attempt_set_intention(ColorEntry.INTENTION_SLOT, 7)
+    white_entry.intentions.attempt_set_intention(ColorEntry.INTENTION_FORCED_PALETTE, 1)
     special_color_remap = {(0,255,0): white_entry}
 
     # Treat the image as one large color remapping problem.  We'll divvy up into tiles later.
@@ -149,7 +149,7 @@ def demo_font():
         # Assign the pixel values from the map.
         for stage_idx, final_idx in stage_to_final_map.items():
             color_entry = staging_palette.color_entries[stage_idx]
-            pixel_value = color_entry.properties.get_property(ColorEntry.PROPERTY_COLOR)
+            pixel_value = color_entry.intentions.get_intention(ColorEntry.INTENTION_COLOR)
             final_palette.final_pixels[final_idx].attempt_write_pixel_value(pixel_value)
 
         # Print each palette.
@@ -323,7 +323,7 @@ def demo_flags():
         # Assign the pixel values from the map.
         for stage_idx, final_idx in stage_to_final_map.items():
             color_entry = staging_palette.color_entries[stage_idx]
-            pixel_value = color_entry.properties.get_property(ColorEntry.PROPERTY_COLOR)
+            pixel_value = color_entry.intentions.get_intention(ColorEntry.INTENTION_COLOR)
             final_palette.final_pixels[final_idx].attempt_write_pixel_value(pixel_value)
 
         # Print each palette.
@@ -446,12 +446,12 @@ def demo_unique_tiles():
     ##############################################################################
     # PATTERNS
     patterns = []
-    pattern_property_map_flips =  {
-        Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ
+    pattern_intention_map_flips =  {
+        Pattern.INTENTION_FLIPS_ALLOWED : Pattern.Flip.HORIZ
     }
     for pixel_array in pixel_arrays:
         index_array = pixel_array.generate_indexed_color_array()
-        pattern = Pattern(index_array=index_array, initial_properties_map=pattern_property_map_flips)
+        pattern = Pattern(index_array=index_array, initial_intentions_map=pattern_intention_map_flips)
         patterns.append(pattern)
 
     ##############################################################################
@@ -524,16 +524,16 @@ def demo_nametable():
 
     # Font comes in as green.  Remap to white.
     white_entry = ColorEntry()
-    white_entry.properties.attempt_set_property(ColorEntry.PROPERTY_COLOR, (255,255,255))
+    white_entry.intentions.attempt_set_intention(ColorEntry.INTENTION_COLOR, (255,255,255))
     font_special_color_remap = {(0,255,0): white_entry}
 
-    font_color_remap = ColorRemap(initial_properties_map={}, unique_pixel_values_list=font_unique_pixel_values_list, color_remap=font_special_color_remap)
+    font_color_remap = ColorRemap(initial_intentions_map={}, unique_pixel_values_list=font_unique_pixel_values_list, color_remap=font_special_color_remap)
 
     # FLAGS
     # Extract all unique colors
     flags_unique_pixel_values_list = flags_pixel_array.generate_deterministic_unique_pixel_list()
 
-    flags_color_remap = ColorRemap(initial_properties_map={}, unique_pixel_values_list=flags_unique_pixel_values_list, color_remap={})
+    flags_color_remap = ColorRemap(initial_intentions_map={}, unique_pixel_values_list=flags_unique_pixel_values_list, color_remap={})
 
     # COLOR REMAPS
     color_remaps = [font_color_remap, flags_color_remap]
@@ -568,8 +568,8 @@ def demo_nametable():
     # merge those that we want to dupe-strip (or can be flipped to be dupes).
     src_pattern_sets = []
 
-    pattern_property_map_flips =  {
-        Pattern.PROPERTY_FLIPS_ALLOWED : Pattern.Flip.HORIZ
+    pattern_intention_map_flips =  {
+        Pattern.INTENTION_FLIPS_ALLOWED : Pattern.Flip.HORIZ
     }
 
     # Go through each large image and dice it up into smaller Patterns.
@@ -604,7 +604,7 @@ def demo_nametable():
                         remapped_indices.append(remapped_index)
                 
                 indexed_array = IndexedColorArray(width=pattern_width, height=pattern_height, indexed_array=remapped_indices)
-                pattern = Pattern(index_array=indexed_array, initial_properties_map=pattern_property_map_flips)
+                pattern = Pattern(index_array=indexed_array, initial_intentions_map=pattern_intention_map_flips)
                 src_patterns.append(pattern)
 
         # Add all source patterns.

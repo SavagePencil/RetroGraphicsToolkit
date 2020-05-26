@@ -2,7 +2,7 @@ from typing import Mapping
 from ColorEntry import ColorEntry
 from BitSet import BitSet
 
-# The staging palette holds ColorEntries, which have properties that determine
+# The staging palette holds ColorEntries, which have intentions that determine
 # which pixel values will end up in which slot when transformed into a final
 # palette.
 class StagingPalette:
@@ -39,7 +39,7 @@ class StagingPalette:
                 unassigned_source_bitset.clear_bit(color_entry_index)
             else:
                 # See if this has a slot.
-                slot = color_entry.properties.get_property(ColorEntry.PROPERTY_SLOT)
+                slot = color_entry.intentions.get_intention(ColorEntry.INTENTION_SLOT)
                 if slot is not None:
                     # Map to this slot.
                     color_entry_index_to_final_slot_map[color_entry_index] = slot

@@ -10,9 +10,9 @@ class ColorsIntoColorsEvaluator(Evaluator):
     COST_ADD_NAME = 1000
 
     s_change_to_cost_map = {
-        ColorEntry.PROPERTY_COLOR : COST_ADD_COLOR
-        , ColorEntry.PROPERTY_SLOT : COST_ADD_SLOT
-        , ColorEntry.PROPERTY_NAME : COST_ADD_NAME
+        ColorEntry.INTENTION_COLOR : COST_ADD_COLOR
+        , ColorEntry.INTENTION_SLOT : COST_ADD_SLOT
+        , ColorEntry.INTENTION_NAME : COST_ADD_NAME
     }
 
     SCORE_ADJUST_ONLY_ONE_MOVE = -10000
@@ -24,8 +24,8 @@ class ColorsIntoColorsEvaluator(Evaluator):
             self.base_score = base_score
 
     class ChangeList:
-        def __init__(self, property_name_value_tuple_list: List[Tuple[str, object]]):
-            self.property_name_value_tuple_list = property_name_value_tuple_list
+        def __init__(self, intention_name_value_tuple_list: List[Tuple[str, object]]):
+            self.intention_name_value_tuple_list = intention_name_value_tuple_list
 
     @classmethod
     def factory_constructor(cls, source_index: int, source: ColorEntry) -> 'ColorsIntoColorsEvaluator':
@@ -64,7 +64,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
                     score = score + ColorsIntoColorsEvaluator.SCORE_ADJUST_ONLY_ONE_MOVE
 
                 # Are there no changes to make this move?
-                if len(potential_move.move.change_list.property_name_value_tuple_list) == 0:
+                if len(potential_move.move.change_list.intention_name_value_tuple_list) == 0:
                     # It's free!
                     score = score + ColorsIntoColorsEvaluator.SCORE_ADJUST_FREE_MOVE
 
@@ -103,13 +103,13 @@ class ColorsIntoColorsEvaluator(Evaluator):
 
     @staticmethod
     def apply_changes(source: ColorEntry, destination: ColorEntry, change_list: 'ColorsIntoColorsEvaluator.ChangeList'):
-        for property_name_value_tuple in change_list.property_name_value_tuple_list:
-            # Each change is a tuple of property name and params.
-            prop_name = property_name_value_tuple[0]
+        for intention_name_value_tuple in change_list.intention_name_value_tuple_list:
+            # Each change is a tuple of intention name and params.
+            prop_name = intention_name_value_tuple[0]
 
             # Get the value from the source and apply it to the dest.
-            src_val = source.properties.get_property(prop_name)
-            destination.properties.attempt_set_property(prop_name, src_val)
+            src_val = source.intentions.get_intention(prop_name)
+            destination.intentions.attempt_set_intention(prop_name, src_val)
 
     @staticmethod
     def is_destination_empty(destination: ColorEntry) -> bool:
@@ -120,8 +120,8 @@ class ColorsIntoColorsEvaluator(Evaluator):
         changes = []
 
         # Test color
-        src_color = self.source.properties.get_property(ColorEntry.PROPERTY_COLOR)
-        dest_color = destination.properties.get_property(ColorEntry.PROPERTY_COLOR)
+        src_color = self.source.intentions.get_intention(ColorEntry.INTENTION_COLOR)
+        dest_color = destination.intentions.get_intention(ColorEntry.INTENTION_COLOR)
 
         # Cases:
         # 1. Both None:  OK to match, no changes
@@ -131,7 +131,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
         if src_color is not None:
             if dest_color is None:
                 # Case 3
-                change = (ColorEntry.PROPERTY_COLOR, src_color)
+                change = (ColorEntry.INTENTION_COLOR, src_color)
                 changes.append(change)
             else:
                 # Case 4
@@ -140,8 +140,8 @@ class ColorsIntoColorsEvaluator(Evaluator):
                     return None
 
         # Test slot
-        src_slot = self.source.properties.get_property(ColorEntry.PROPERTY_SLOT)
-        dest_slot = destination.properties.get_property(ColorEntry.PROPERTY_SLOT)
+        src_slot = self.source.intentions.get_intention(ColorEntry.INTENTION_SLOT)
+        dest_slot = destination.intentions.get_intention(ColorEntry.INTENTION_SLOT)
 
         # Cases:
         # 1. Both None:  OK to match, no changes
@@ -151,7 +151,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
         if src_slot is not None:
             if dest_slot is None:
                 # Case 3
-                change = (ColorEntry.PROPERTY_SLOT, src_slot)
+                change = (ColorEntry.INTENTION_SLOT, src_slot)
                 changes.append(change)
             else:
                 # Case 4
@@ -160,8 +160,8 @@ class ColorsIntoColorsEvaluator(Evaluator):
                     return None
 
         # Test name
-        src_name = self.source.properties.get_property(ColorEntry.PROPERTY_NAME)
-        dest_name = destination.properties.get_property(ColorEntry.PROPERTY_NAME)
+        src_name = self.source.intentions.get_intention(ColorEntry.INTENTION_NAME)
+        dest_name = destination.intentions.get_intention(ColorEntry.INTENTION_NAME)
 
         # Cases:
         # 1. Both None:  OK to match, no changes
@@ -180,7 +180,7 @@ class ColorsIntoColorsEvaluator(Evaluator):
                     # FAIL
                     return None
                 else:
-                    change = (ColorEntry.PROPERTY_NAME, src_name)
+                    change = (ColorEntry.INTENTION_NAME, src_name)
                     changes.append(change)
             else:
                 # Case 4
@@ -194,13 +194,13 @@ class ColorsIntoColorsEvaluator(Evaluator):
     def _get_score_for_changes(change_list: 'ColorsIntoColorsEvaluator.ChangeList') -> int:
         score = 0
 
-        if len(change_list.property_name_value_tuple_list) == 0:
+        if len(change_list.intention_name_value_tuple_list) == 0:
             # No changes means it's free.
             return -math.inf
 
         # Pay a cost for each move
-        for change in change_list.property_name_value_tuple_list:
-            # Each change is a tuple of property name and params.
+        for change in change_list.intention_name_value_tuple_list:
+            # Each change is a tuple of intention name and params.
             change_key = change[0]
             cost = ColorsIntoColorsEvaluator.s_change_to_cost_map[change_key]
             score = score + cost
