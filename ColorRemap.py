@@ -70,3 +70,19 @@ class ColorRemap(PropertyCollection):
             staging_index = move.dest_index
 
             self.staging_palette_indices[color_index] = staging_index
+
+    # Returns the corresponding index from the original unique color list.
+    def convert_pixel_value_to_unique_index(self, pixel_value:object) -> int:
+        return self.source_pixel_value_to_index[pixel_value]
+
+    # Returns the corresponding index from the staging palette remapping.
+    def convert_pixel_value_to_staging_index(self, pixel_value:object) -> int:
+        unique_idx = self.convert_pixel_value_to_unique_index(pixel_value)
+        staging_idx = self.staging_palette_indices[unique_idx]
+        return staging_idx
+
+    # Returns the corresponding index from the final palette remapping.
+    def convert_pixel_value_to_final_index(self, pixel_value:object) -> int:
+        unique_idx = self.convert_pixel_value_to_unique_index(pixel_value)
+        staging_idx = self.final_palette_indices[unique_idx]
+        return staging_idx
