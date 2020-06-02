@@ -1,6 +1,6 @@
 from typing import Mapping
-from ColorEntry import ColorEntry
-from BitSet import BitSet
+from rgtk.ColorEntry import ColorEntry
+from rgtk.BitSet import BitSet
 
 # The staging palette holds ColorEntries, which have intentions that determine
 # which pixel values will end up in which slot when transformed into a final

@@ -1,4 +1,4 @@
-from Pattern import Pattern
+from rgtk.Pattern import Pattern
 
 class NameTableEntry:
     # Static Vars

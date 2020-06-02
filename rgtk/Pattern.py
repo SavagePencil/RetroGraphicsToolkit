@@ -1,7 +1,7 @@
 from typing import List, Mapping, Optional
 from enum import IntFlag
-from Intention import IntentionCollection, IntentionDefinition
-from IndexedColorArray import IndexedColorArray
+from rgtk.Intention import IntentionCollection, IntentionDefinition
+from rgtk.IndexedColorArray import IndexedColorArray
 
 class Pattern(IntentionCollection):
     class InvalidFlipEnumerationError(Exception):

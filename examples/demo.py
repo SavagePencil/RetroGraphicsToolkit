@@ -1,21 +1,22 @@
 import math
+import os
 from PIL import Image
-from ColorEntry import ColorEntry
-from constraint_solver import ConstraintSolver
-from ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
-from PixelArray import PixelArray
-from ColorRemap import ColorRemap
-from StagingPalette import StagingPalette
-from ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
-from FinalPalette import FinalPalette
-from Pattern import Pattern
-import Quantize
-from Interval import Interval
-from IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
-from BitSet import BitSet
-from PatternsIntoPatternHashMapsEvaluator import PatternsIntoPatternHashMapsEvaluator
-from IndexedColorArray import IndexedColorArray
-from NameTableEntry import NameTableEntry
+from rgtk import Quantize
+from rgtk.ColorEntry import ColorEntry
+from rgtk.constraint_solver import ConstraintSolver
+from rgtk.ColorRemapsIntoStagingPalettesEvaluator import ColorRemapsIntoStagingPalettesEvaluator
+from rgtk.PixelArray import PixelArray
+from rgtk.ColorRemap import ColorRemap
+from rgtk.StagingPalette import StagingPalette
+from rgtk.ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
+from rgtk.FinalPalette import FinalPalette
+from rgtk.Pattern import Pattern
+from rgtk.BitSet import BitSet
+from rgtk.Interval import Interval
+from rgtk.IntervalsToBitSetsEvaluator import IntervalsToBitSetsEvaluator
+from rgtk.IndexedColorArray import IndexedColorArray
+from rgtk.PatternsIntoPatternHashMapsEvaluator import PatternsIntoPatternHashMapsEvaluator
+from rgtk.NameTableEntry import NameTableEntry
 
 def demo_colors():
     # Source nodes
@@ -89,7 +90,11 @@ def demo_font():
 
     ##############################################################################
     # PIXEL ARRAYS
-    parent_image = Image.open("font.png").convert("RGB")
+
+    # Assets are relative to this script's directory.
+    our_dir = os.path.dirname(__file__)
+
+    parent_image = Image.open(os.path.join(our_dir, "assets/font.png")).convert("RGB")
     color_remaps = []
 
     # Font comes in as green.  Remap to white.
@@ -262,7 +267,11 @@ def demo_flags():
 
     ##############################################################################
     # PIXEL ARRAYS
-    parent_image = Image.open("flags.png").convert("RGB")
+
+    # Assets are relative to this script's directory.
+    our_dir = os.path.dirname(__file__)
+
+    parent_image = Image.open(os.path.join(our_dir, "assets/flags.png")).convert("RGB")
     color_remaps = []
     pixel_arrays = []
 
@@ -428,8 +437,11 @@ def demo_VRAM():
 def demo_unique_tiles():
     ##############################################################################
     # PIXEL ARRAYS
-    parent_image = Image.open("font.png").convert("RGB")
+    # Assets are relative to this script's directory.
+    our_dir = os.path.dirname(__file__)
 
+    parent_image = Image.open(os.path.join(our_dir, "assets/font.png")).convert("RGB")
+    
     pixel_arrays = []
 
     # Load the image and then divvy up into separate tiles.
@@ -503,11 +515,15 @@ def demo_unique_tiles():
 def demo_nametable():
     ##############################################################################
     # PIXEL ARRAY
-    font_image = Image.open("font.png").convert("RGB")
+    
+    # Track the path relative to this script.
+    our_dir = os.path.dirname(__file__)
+
+    font_image = Image.open(os.path.join(our_dir, "assets/font.png")).convert("RGB")
     font_pixel_array = PixelArray(font_image, 0, 0, font_image.width, font_image.height)
     font_pixel_array.quantize((8,8,8), (2,2,2))
 
-    flags_image = Image.open("flags.png").convert("RGB")
+    flags_image = Image.open(os.path.join(our_dir, "assets/flags.png")).convert("RGB")
     flags_pixel_array = PixelArray(flags_image, 0, 0, flags_image.width, flags_image.height)
     flags_pixel_array.quantize((8,8,8), (2,2,2))
 

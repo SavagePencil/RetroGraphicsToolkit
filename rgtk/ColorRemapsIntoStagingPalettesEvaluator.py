@@ -1,9 +1,9 @@
 import math
 from typing import List, Tuple, Optional
-from constraint_solver import ConstraintSolver, Evaluator, Move
-from ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
-from ColorRemap import ColorRemap
-from StagingPalette import StagingPalette
+from rgtk.constraint_solver import ConstraintSolver, Evaluator, Move
+from rgtk.ColorsIntoColorsEvaluator import ColorsIntoColorsEvaluator
+from rgtk.ColorRemap import ColorRemap
+from rgtk.StagingPalette import StagingPalette
 
 class ColorRemapsIntoStagingPalettesEvaluator(Evaluator):
     # Static Vars

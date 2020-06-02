@@ -1,7 +1,7 @@
 from typing import Tuple, Mapping, List
-import Quantize
+from rgtk import Quantize
 from PIL import Image
-from IndexedColorArray import IndexedColorArray
+from rgtk.IndexedColorArray import IndexedColorArray
 
 class PixelArray:
     def __init__(self, src_img: Image, src_x: int, src_y: int, width: int, height: int):

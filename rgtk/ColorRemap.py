@@ -1,8 +1,8 @@
 from typing import List, Mapping
-from Intention import IntentionCollection, IntentionDefinition
-from ColorEntry import ColorEntry
-from StagingPalette import StagingPalette
-from constraint_solver import Move
+from rgtk.Intention import IntentionCollection, IntentionDefinition
+from rgtk.ColorEntry import ColorEntry
+from rgtk.StagingPalette import StagingPalette
+from rgtk.constraint_solver import Move
 
 class ColorRemap(IntentionCollection):
     # Static vars

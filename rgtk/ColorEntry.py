@@ -1,4 +1,4 @@
-from Intention import IntentionDefinition, IntentionCollection
+from rgtk.Intention import IntentionDefinition, IntentionCollection
 
 class ColorEntry:
     # Static vars
