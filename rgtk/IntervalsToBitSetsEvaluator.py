@@ -1,8 +1,8 @@
 import math
 from typing import List, Tuple, Optional
-from constraint_solver import ConstraintSolver, Evaluator, Move
-from Interval import Interval
-from BitSet import BitSet
+from rgtk.constraint_solver import ConstraintSolver, Evaluator, Move
+from rgtk.Interval import Interval
+from rgtk.BitSet import BitSet
 
 class IntervalsToBitSetsEvaluator(Evaluator):
     # Static Vars

@@ -1,10 +1,9 @@
 import math
 import copy
 from typing import List, Tuple
-from BitSet import BitSet
-from FSM import FSM, State
-
-from ColorEntry import ColorEntry
+from rgtk.BitSet import BitSet
+from rgtk.FSM import FSM, State
+from rgtk.ColorEntry import ColorEntry
 
 class Move:
     def __init__(self, source_index: int, dest_index: int, change_list: object):

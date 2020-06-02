@@ -1,4 +1,4 @@
-from ColorEntry import ColorEntry
+from rgtk.ColorEntry import ColorEntry
 
 # The final palette holds color (pixel) values in an array
 class FinalPalette:

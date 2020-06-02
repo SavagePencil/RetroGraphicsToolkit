@@ -1,7 +1,7 @@
 import math
 from typing import List, Tuple, Optional
-from ColorEntry import ColorEntry
-from constraint_solver import Evaluator, Move
+from rgtk.ColorEntry import ColorEntry
+from rgtk.constraint_solver import Evaluator, Move
 
 class ColorsIntoColorsEvaluator(Evaluator):
     # Static vars

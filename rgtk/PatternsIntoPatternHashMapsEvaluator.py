@@ -2,8 +2,8 @@ import math
 import weakref
 from weakref import ReferenceType
 from typing import List, Tuple, Mapping, Optional
-from constraint_solver import ConstraintSolver, Evaluator, Move
-from Pattern import Pattern
+from rgtk.constraint_solver import ConstraintSolver, Evaluator, Move
+from rgtk.Pattern import Pattern
 
 class PatternsIntoPatternHashMapsEvaluator(Evaluator):
     # Static Vars
