@@ -1,49 +1,34 @@
 import math
-from typing import Tuple
+import os
+
+from PIL import Image
 
 from rgtk.BitSet import BitSet
 from rgtk.constraint_solver import ConstraintSolver
 from rgtk.IndexedColorArray import IndexedColorArray
+from rgtk.PixelArray import PixelArray
+import rgtk.Quantize
 from rgtk.SubsetsToBitSetsEvaluator import SubsetsToBitSetsEvaluator
 
-# sverx cross:
-image = [   0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,1,1,    1,1,1,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
+##############################################################################
+# PIXEL ARRAYS
+# Assets are relative to this script's directory.
+our_dir = os.path.dirname(__file__)
 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,1,1,1,    1,1,1,1,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,1,1,1,    1,1,1,1,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,1,1,1,    1,1,1,1,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,1,1,1,    1,1,1,1,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,1,1,1,    1,1,1,1,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    1,1,1,1,1,1,1,1,    1,1,1,1,1,1,1,1,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,1,    1,1,1,1,1,1,1,1,    1,1,1,1,1,1,1,1,    1,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,1,    1,1,1,1,1,1,1,1,    1,1,1,1,1,1,1,1,    1,0,0,0,0,0,0,0, 
+parent_image = Image.open(os.path.join(our_dir, "assets/sverx_cross.png")).convert("RGB")
+px_array = PixelArray(parent_image, 0, 0, parent_image.width, parent_image.height)
+px_array.quantize((8,8,8), (2,2,2))
 
-            0,0,0,0,0,0,0,1,    1,1,1,1,1,1,1,1,    1,1,1,1,1,1,1,1,    1,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,1,    1,1,1,1,1,1,1,1,    1,1,1,1,1,1,1,1,    1,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    1,1,1,1,1,1,1,1,    1,1,1,1,1,1,1,1,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,1,1,1,1,    1,1,1,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,1,1,1,1,    1,1,1,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,1,1,1,1,    1,1,1,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,1,1,1,1,    1,1,1,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,1,1,1,1,    1,1,1,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
+# Transform the image into an indexed array where 0s are clear and 1s are opaque.
+clear_color = (255,255,255)
+idx_image = []
+for pixel in px_array.pixels:
+    if pixel == clear_color:
+        idx_image.append(0)
+    else:
+        idx_image.append(1)
 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,1,1,1,    1,1,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0, 
-            0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0,    0,0,0,0,0,0,0,0] 
-
-indexed_array = IndexedColorArray(width=32, height=32, indexed_array=image)
+indexed_array = IndexedColorArray(width=parent_image.width, height=parent_image.height, indexed_array=idx_image)
 
 ##############################################################################
 # PIXEL IDENTIFICATION
@@ -121,7 +106,7 @@ for sprite_idx in range(len(potential_sprite_upper_left_positions)):
 solver = ConstraintSolver(sources=potential_sprite_pixel_coverage_bitsets, destinations=[dest_pixel_bitset], evaluator_class=SubsetsToBitSetsEvaluator, debugging=None)
 
 solution_count = 0
-best_solution = None
+best_solutions = None
 best_sprites_set = None
 
 while (len(solver.solutions) < 100 ) and (solver.is_exhausted() == False):
