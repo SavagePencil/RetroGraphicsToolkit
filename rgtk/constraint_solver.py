@@ -16,11 +16,23 @@ class Evaluator:
     def __init__(self, source_index: int, source: object):
         self.source_index = source_index
         self.source = source
-    
+
+    @classmethod
+    def factory_constructor(cls, source_index: int, source: object) -> 'Evaluator':
+        pass
+
     def get_list_of_best_moves(self) -> Tuple[int, List[Move]]:
         pass
 
     def update_moves_for_destination(self, destination_index: int, destination: object):
+        pass
+
+    @staticmethod
+    def apply_changes(source: object, destination: object, change_list: object):
+        pass
+
+    @staticmethod
+    def is_destination_empty(destination: object) -> bool:
         pass
 
 

@@ -1,5 +1,9 @@
 from typing import Optional
 
+class MismatchedBitSetLengthError(Exception):
+    def __init__(self):
+        pass
+
 class BitSet:
     def __init__(self, num_bits: int):
         self._bitset = 0
@@ -67,3 +71,57 @@ class BitSet:
     def are_all_clear(self) -> bool:
         return self._bitset == 0
 
+    def get_num_bits_set(self) -> int:
+        bits_set = 0
+        temp_val = self._bitset
+        while (temp_val != 0):
+            if temp_val & 1 == 1:
+                bits_set += 1
+            temp_val = temp_val >> 1
+
+        return bits_set
+
+    def get_union_bitset(self, other: 'BitSet') -> 'BitSet':
+        if self._num_bits != other._num_bits:
+            raise MismatchedBitSetLengthError()
+
+        union = self._bitset | other._bitset
+        ret_val = BitSet(self._num_bits)
+        ret_val._bitset = union
+        return ret_val
+
+    def get_intersection_bitset(self, other: 'BitSet') -> 'BitSet':
+        if self._num_bits != other._num_bits:
+            raise MismatchedBitSetLengthError()
+
+        union = self._bitset & other._bitset
+        ret_val = BitSet(self._num_bits)
+        ret_val._bitset = union
+        return ret_val
+
+    def get_difference_bitset(self, other: 'BitSet') -> 'BitSet':
+        if self._num_bits != other._num_bits:
+            raise MismatchedBitSetLengthError()
+
+        diff = self._bitset ^ other._bitset
+        ret_val = BitSet(self._num_bits)
+        ret_val._bitset = diff
+        return ret_val
+
+    def union_with(self, other: 'BitSet'):
+        if self._num_bits != other._num_bits:
+            raise MismatchedBitSetLengthError()
+
+        self._bitset = self._bitset | other._bitset
+
+    def intersect_with(self, other: 'BitSet'):
+        if self._num_bits != other._num_bits:
+            raise MismatchedBitSetLengthError()
+
+        self._bitset = self._bitset & other._bitset
+
+    def difference_with(self, other: 'BitSet'):
+        if self._num_bits != other._num_bits:
+            raise MismatchedBitSetLengthError()
+
+        self._bitset = self._bitset ^ other._bitset
