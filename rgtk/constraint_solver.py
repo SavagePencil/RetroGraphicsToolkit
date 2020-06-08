@@ -342,8 +342,8 @@ class ConstraintSolver:
                 if self._evaluator_class.is_destination_empty(destination):
                     raise Exception("Destination was left empty after a move, which may lead to incorrect assignment.")
                 else:
-                    # Destination is actually empty.
-                    self._empty_destinations_bitset.set_bit(dest_index)
+                    # Destination is actually NOT empty any longer.
+                    self._empty_destinations_bitset.clear_bit(dest_index)
 
                     # Can we find another one?
                     next_empty = self._empty_destinations_bitset.get_next_set_bit_index(dest_index + 1)
