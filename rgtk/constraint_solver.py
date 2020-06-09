@@ -1,9 +1,10 @@
 import math
 import copy
 from typing import List, Tuple
+
 from rgtk.BitSet import BitSet
 from rgtk.FSM import FSM, State
-from rgtk.ColorEntry import ColorEntry
+from rgtk.SimpleTimer import SimpleTimer
 
 class Move:
     def __init__(self, source_index: int, dest_index: int, change_list: object):
@@ -37,7 +38,23 @@ class Evaluator:
 
 
 class ConstraintSolver:
+    # Static vars
+    s_timer_names = [
+          "ApplySolution"
+        , "SolutionSuccessful"
+        , "SubsetInit"
+        , "AssessMoves"
+        , "GetBestMoves"
+        , "ExecuteMove"
+    ]
+
     def __init__(self, sources: List[object], destinations: List[object], evaluator_class: any, debugging: any):
+        # Create our timers.
+        self.timer_name_to_timer = {}
+        for name in ConstraintSolver.s_timer_names:
+            self.timer_name_to_timer[name] = SimpleTimer(name)
+
+        # Now setup members.
         self.destinations = destinations
         self.sources = sources
         self._evaluator_class = evaluator_class
@@ -68,6 +85,9 @@ class ConstraintSolver:
     # Applies a solution provided by the constraint solver to the original destination.
     # Returns a set of how sources are mapped to destinations.
     def apply_solution(self, solution: List[Move]):
+        timer = self.timer_name_to_timer["ApplySolution"]
+        timer.begin()
+
         for move in solution:
             source_index = move.source_index
             source = self.sources[source_index]
@@ -79,17 +99,24 @@ class ConstraintSolver:
 
             self._evaluator_class.apply_changes(source, destination, change_list)
 
+        timer.end()
+
     def _add_subset_solver(self, subset_solver: 'ConstraintSolver.SubsetSolver'):
         # Append this to our current list.
         self._wip_subset_solvers.append(subset_solver)
 
     def _accept_current_subset_solver_as_successful(self):
+        timer = self.timer_name_to_timer["SolutionSuccessful"]
+        timer.begin()
+
         subset_solver = self._wip_subset_solvers[0]
         new_solution = copy.deepcopy(subset_solver._committed_moves)
         self.solutions.append(new_solution)
 
         # Remove the current subset solver.
         self._wip_subset_solvers.pop(0)
+
+        timer.end()
 
     def _accept_current_subset_solver_as_failed(self):
         # Remove the current subset solver.
@@ -151,6 +178,9 @@ class ConstraintSolver:
 
     class SubsetSolver:
         def __init__(self, parent_solver: 'ConstraintSolver', sources: List[object], wip_solution_state: List[object], committed_moves: List[Move], unmapped_sources_bitset: BitSet, evaluator_class, indent_level: int, debugging):
+            timer = parent_solver.timer_name_to_timer["SubsetInit"]
+            timer.begin()
+
             # Store our parent solver, so that we can alert them when done.
             self._parent_solver = parent_solver
 
@@ -206,6 +236,8 @@ class ConstraintSolver:
                         # Clear out the dirty flag so that *this* empty isn't considered fair game
                         self._dirty_destination_indices_bitset.clear_bit(dest_index)
 
+            timer.end()
+
         def assess_moves(self):
             # If no unmapped sources remain, flag success
             if len(self._source_index_to_evaluator.values()) == 0:
@@ -222,6 +254,9 @@ class ConstraintSolver:
 
                 raise ConstraintSolver.AllItemsMappedSuccessfully()
 
+            timer = self._parent_solver.timer_name_to_timer["AssessMoves"]
+            timer.begin()
+
             # If we have dirty destinations, update each node to alert them.
             next_dirty_destination_index = self._dirty_destination_indices_bitset.get_next_set_bit_index(0)
             while next_dirty_destination_index is not None:
@@ -236,13 +271,20 @@ class ConstraintSolver:
                 # On to the next...
                 next_dirty_destination_index = self._dirty_destination_indices_bitset.get_next_set_bit_index(next_dirty_destination_index + 1)
 
+            timer.end()
+
         def choose_next_moves(self):
             # Find the edge(s) with the best scores.
             best_score = math.inf
             best_moves = []
 
             for evaluator in self._source_index_to_evaluator.values():
+                timer = self._parent_solver.timer_name_to_timer["GetBestMoves"]
+                timer.begin()
+
                 score_moves_tuple = evaluator.get_list_of_best_moves()
+
+                timer.end()
 
                 score = score_moves_tuple[0]
                 moves = score_moves_tuple[1]
@@ -305,6 +347,9 @@ class ConstraintSolver:
             self.indent_level = self.indent_level + 1
 
         def _execute_move(self, move: Move):
+            timer = self._parent_solver.timer_name_to_timer["ExecuteMove"]
+            timer.begin()
+
             # Emit debugging.
             if self.debugging is not None:
                 indent_str = self.indent_level * '\t'
@@ -350,3 +395,5 @@ class ConstraintSolver:
                     if next_empty is not None:
                         # Mark it as dirty so that we can evaluate it as a possible move destination.
                         self._dirty_destination_indices_bitset.set_bit(next_empty)
+
+            timer.end()
