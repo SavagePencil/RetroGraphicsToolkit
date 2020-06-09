@@ -64,8 +64,11 @@ class ConstraintSolver:
         unmapped_sources_bitset = BitSet(len(sources))
         unmapped_sources_bitset.set_all()
         subset_solver = ConstraintSolver.SubsetSolver(self, sources, destinations, committed_moves, unmapped_sources_bitset, self._evaluator_class, 0, debugging)
-        self._wip_subset_solvers = []
-        self._wip_subset_solvers.append(subset_solver)
+        self._backlog_subset_solvers = []
+        self._backlog_subset_solvers.append(subset_solver)
+
+        # We'll let the first iteration of the solver pull from the WIP.
+        self._current_subset_solver = None
 
         # Create and start the state machine for this solver.
         self._fsm = FSM(self)
@@ -103,38 +106,41 @@ class ConstraintSolver:
 
     def _add_subset_solver(self, subset_solver: 'ConstraintSolver.SubsetSolver'):
         # Append this to our current list.
-        self._wip_subset_solvers.append(subset_solver)
+        self._backlog_subset_solvers.append(subset_solver)
 
     def _accept_current_subset_solver_as_successful(self):
         timer = self.timer_name_to_timer["SolutionSuccessful"]
         timer.begin()
 
-        subset_solver = self._wip_subset_solvers[0]
-        new_solution = copy.deepcopy(subset_solver._committed_moves)
-        self.solutions.append(new_solution)
+        self.solutions.append(self._current_subset_solver._committed_moves)
 
         # Remove the current subset solver.
-        self._wip_subset_solvers.pop(0)
+        self._current_subset_solver = None
 
         timer.end()
 
     def _accept_current_subset_solver_as_failed(self):
         # Remove the current subset solver.
-        self._wip_subset_solvers.pop(0)
+        self._current_subset_solver = None
 
     class AssessCompletionState(State):
         @staticmethod
         def on_enter(context):
-            if len(context._wip_subset_solvers) == 0:
-                return ConstraintSolver.ExhaustedState
+            if context._current_subset_solver is None:
+                # Do we have any in the queue?
+                if len(context._backlog_subset_solvers) == 0:
+                    return ConstraintSolver.ExhaustedState
+                else:
+                    subset_solver = context._backlog_subset_solvers.pop(0)
+                    context._current_subset_solver = subset_solver
             return ConstraintSolver.AssessMovesState
 
     class AssessMovesState(State):
         @staticmethod
         def on_update(context):
-            subset_solver = context._wip_subset_solvers[0]
             try:
-                subset_solver.assess_moves()
+                # Assess moves on current solver.
+                context._current_subset_solver.assess_moves()
             except ConstraintSolver.AllItemsMappedSuccessfully:
                 return ConstraintSolver.SuccessfulSubsetCompletionState
             else:
@@ -143,9 +149,8 @@ class ConstraintSolver:
     class SelectMovesState(State):
         @staticmethod
         def on_update(context):
-            subset_solver = context._wip_subset_solvers[0]
             try:
-                subset_solver.choose_next_moves()
+                context._current_subset_solver.choose_next_moves()
             except ConstraintSolver.SolverFailed_NoMovesAvailableError:
                 return ConstraintSolver.FailedSubsetCompletionState
             else:
