@@ -19,12 +19,12 @@ preprocess_timer.begin()
 # Assets are relative to this script's directory.
 our_dir = os.path.dirname(__file__)
 
-parent_image = Image.open(os.path.join(our_dir, "assets/sverx_cross.png")).convert("RGB")
+parent_image = Image.open(os.path.join(our_dir, "assets/demo_frame.png")).convert("RGB")
 px_array = PixelArray(parent_image, 0, 0, parent_image.width, parent_image.height)
 px_array.quantize((8,8,8), (2,2,2))
 
 # Transform the image into an indexed array where 0s are clear and 1s are opaque.
-clear_color = (255,255,255)
+clear_color = (85,85,85)
 idx_image = []
 for pixel in px_array.pixels:
     if pixel == clear_color:
@@ -115,7 +115,7 @@ solution_count = 0
 best_solutions = None
 best_sprites_set = None
 
-while (len(solver.solutions) < 100 ) and (solver.is_exhausted() == False):
+while (len(solver.solutions) < 10000000 ) and (solver.is_exhausted() == False):
     solver.update()
 
     if len(solver.solutions) != solution_count:

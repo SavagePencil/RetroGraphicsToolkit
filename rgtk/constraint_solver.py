@@ -36,7 +36,6 @@ class Evaluator:
     def is_destination_empty(destination: object) -> bool:
         pass
 
-
 class ConstraintSolver:
     # Static vars
     s_timer_names = [
@@ -54,18 +53,17 @@ class ConstraintSolver:
         for name in ConstraintSolver.s_timer_names:
             self.timer_name_to_timer[name] = SimpleTimer(name)
 
+        # Track our tree of solver nodes.
+        # We'll start with an empty one.
+        self._subset_tree_head = ConstraintSolver.SolverSubsetNode(parent=self, moves_list=[])
+
         # Now setup members.
         self.destinations = destinations
         self.sources = sources
         self._evaluator_class = evaluator_class
         self.solutions = []
 
-        committed_moves = []
-        unmapped_sources_bitset = BitSet(len(sources))
-        unmapped_sources_bitset.set_all()
-        subset_solver = ConstraintSolver.SubsetSolver(self, sources, destinations, committed_moves, unmapped_sources_bitset, self._evaluator_class, 0, debugging)
-        self._backlog_subset_solvers = []
-        self._backlog_subset_solvers.append(subset_solver)
+        self._debugging = debugging
 
         # We'll let the first iteration of the solver pull from the WIP.
         self._current_subset_solver = None
@@ -104,34 +102,107 @@ class ConstraintSolver:
 
         timer.end()
 
-    def _add_subset_solver(self, subset_solver: 'ConstraintSolver.SubsetSolver'):
-        # Append this to our current list.
-        self._backlog_subset_solvers.append(subset_solver)
+    def _create_subset_solver(self) -> 'ConstraintSolver.SubsetSolver':
+        unmapped_sources_bitset = BitSet(len(self.sources))
+        unmapped_sources_bitset.set_all()
+
+        subset_solver = ConstraintSolver.SubsetSolver(parent_solver=self
+            , sources=self.sources
+            , wip_solution_state=self.destinations
+            , unmapped_sources_bitset=unmapped_sources_bitset
+            , evaluator_class=self._evaluator_class
+            , indent_level=0
+            , debugging=self._debugging)
+
+        # Start at the head of the tree and collate all of the moves
+        # in the leftmost children, until we reach the bottom.
+        curr_node = self._subset_tree_head
+        while curr_node is not None:
+            for move in curr_node.moves_list:
+                subset_solver._execute_move(move)
+
+            if len(curr_node.children) == 0:
+                # We're done.
+                curr_node = None
+            else:
+                # Take the first child.
+                curr_node = curr_node.children[0]
+
+        return subset_solver
+
+    def _append_moves(self, subset_solver: 'ConstraintSolver.SubsetSolver', child_move_lists: List[List[Move]]):
+        # Append this to our current tree.
+        curr_node = self._subset_tree_head
+        while len(curr_node.children) > 0:
+            # Take the leftmost path.
+            curr_node = curr_node.children[0]
+
+        if len(child_move_lists) == 1:
+            # If there's only one set of moves, add them to the node itself.
+            move_list = child_move_lists[0]
+
+            for move in move_list:
+                curr_node.moves_list.append(move)
+                subset_solver._execute_move(move)
+        else:
+            # Need to create child nodes.
+            for move_list in child_move_lists:
+                child_node = ConstraintSolver.SolverSubsetNode(parent=curr_node, moves_list=move_list)
+                curr_node.children.append(child_node)
+        
+            # Execute the leftmost child's actions so that 
+            # we can continue using our current subset solver 
+            # without having to create a new one.
+            leftmost_child = curr_node.children[0]
+            for move in leftmost_child.moves_list:
+                subset_solver._execute_move(move)
+
+    def _remove_current_subset_solver(self) -> List[Move]:
+        # Starting at the head, compile all moves for the solution.
+        solution_moves = []
+        curr_node = self._subset_tree_head
+        while len(curr_node.children) > 0:
+            child_moves = curr_node.moves_list
+            for child_move in child_moves:
+                solution_moves.append(child_move)
+
+            curr_node = curr_node.children[0]
+
+        # Walk back up the tree, removing any node that has no children.
+        curr_node = curr_node.parent
+        while len(curr_node.children) == 1:
+            curr_node.children.pop(0)
+            curr_node = curr_node.parent
+
+        # Remove the current subset solver.
+        self._current_subset_solver = None
+
+        return solution_moves
 
     def _accept_current_subset_solver_as_successful(self):
         timer = self.timer_name_to_timer["SolutionSuccessful"]
         timer.begin()
 
-        self.solutions.append(self._current_subset_solver._committed_moves)
-
-        # Remove the current subset solver.
-        self._current_subset_solver = None
+        # Remove us and get the solutions.
+        solution_moves = self._remove_current_subset_solver()
+        self.solutions.append(solution_moves)
 
         timer.end()
 
     def _accept_current_subset_solver_as_failed(self):
-        # Remove the current subset solver.
-        self._current_subset_solver = None
+        # Remove us.
+        self._remove_current_subset_solver()
 
     class AssessCompletionState(State):
         @staticmethod
         def on_enter(context):
             if context._current_subset_solver is None:
-                # Do we have any in the queue?
-                if len(context._backlog_subset_solvers) == 0:
+                # Has our tree been exhausted?
+                if context._subset_tree_head is None:
                     return ConstraintSolver.ExhaustedState
                 else:
-                    subset_solver = context._backlog_subset_solvers.pop(0)
+                    # Otherwise, we'll create a new subset solver from the tree.
+                    subset_solver = context._create_subset_solver()
                     context._current_subset_solver = subset_solver
             return ConstraintSolver.AssessMovesState
 
@@ -181,8 +252,18 @@ class ConstraintSolver:
     class SolverFailed_NoMovesAvailableError(Exception):
         pass
 
+    class SolverSubsetNode:
+        def __init__(self, parent: 'ConstraintSolver.SolverSubsetTree', moves_list: List[Move]):
+            self.parent = parent
+            self.moves_list = moves_list
+            self.children = []
+
+        def add_child(self, moves_list: List[Move]):
+            child = ConstraintSolver.SolverSubsetNode(parent=self, moves_list=moves_list)
+            self.children.append(child)
+
     class SubsetSolver:
-        def __init__(self, parent_solver: 'ConstraintSolver', sources: List[object], wip_solution_state: List[object], committed_moves: List[Move], unmapped_sources_bitset: BitSet, evaluator_class, indent_level: int, debugging):
+        def __init__(self, parent_solver: 'ConstraintSolver', sources: List[object], wip_solution_state: List[object], unmapped_sources_bitset: BitSet, evaluator_class, indent_level: int, debugging):
             timer = parent_solver.timer_name_to_timer["SubsetInit"]
             timer.begin()
 
@@ -211,9 +292,6 @@ class ConstraintSolver:
 
             # Keep a reference to the sources (we won't alter these)
             self._sources = sources
-
-            # Create a copy of the committed moves (shallow is fine, as we aren't altering moves)
-            self._committed_moves = copy.copy(committed_moves)
 
             # Create a deep copy of our WIP solution state, as we *will* be altering that.
             self._wip_solution_state = copy.deepcopy(wip_solution_state)
@@ -247,15 +325,6 @@ class ConstraintSolver:
             # If no unmapped sources remain, flag success
             if len(self._source_index_to_evaluator.values()) == 0:
                 # We're done, successfully!
-
-                # Emit debugging.
-                if self.debugging is not None:
-                    indent_str = self.indent_level * '\t'
-                    moves_str = ""
-                    for move in self._committed_moves:
-                        moves_str = moves_str + (f" ({move.source_index} -> {move.dest_index})")
-
-                    print(f"{indent_str}{self.__hash__()}: Completed Successfully:{moves_str}")
 
                 raise ConstraintSolver.AllItemsMappedSuccessfully()
 
@@ -315,38 +384,15 @@ class ConstraintSolver:
 
             if best_score == -math.inf:
                 # SPECIAL CASE:  These moves are free.  Take them all now.
-                for move in best_moves:
-                    self._execute_move(move)
+                self._parent_solver._append_moves(self, [best_moves])
             else:
                 # Otherwise, fork the state for other possibilities.
-                first_move = best_moves.pop()
+                child_move_lists = []
+                for move in best_moves:
+                    child_move_list = [move]
+                    child_move_lists.append(child_move_list)
 
-                subsets = []
-                for alt_best_move in best_moves:
-                    # Create alternate subsets to solve the other moves.
-                    subset = ConstraintSolver.SubsetSolver(self._parent_solver, self._sources, self._wip_solution_state, self._committed_moves, self._unmapped_sources_bitset, self._evaluator_class, self.indent_level + 1, self.debugging)
-                    subsets.append(subset)
-
-                # Execute our own move on ourselves now.
-                self._execute_move(first_move)
-
-                # Emit debugging.
-                if self.debugging is not None:
-                    indent_str = self.indent_level * '\t'
-                    subsets_str = ""
-                    for subset in subsets:
-                        subsets_str = subsets_str + f" {subset.__hash__()}"
-                    print(f"{indent_str}{self.__hash__()}: Created {len(best_moves)} alternate solvers to evaluate: {subsets_str}")
-
-                for subset_idx in range(len(subsets)):
-                    # Now execute the remaining moves on the subsets
-                    subset = subsets[subset_idx]
-                    alt_best_move = best_moves[subset_idx]
-                    # Execute the move
-                    subset._execute_move(alt_best_move)
-
-                    # Add it to the solver to figure out.
-                    self._parent_solver._add_subset_solver(subset)                
+                self._parent_solver._append_moves(self, child_move_lists)
 
             # Increment our indent level
             self.indent_level = self.indent_level + 1
@@ -359,9 +405,6 @@ class ConstraintSolver:
             if self.debugging is not None:
                 indent_str = self.indent_level * '\t'
                 print(f"{indent_str}{self.__hash__()}: Move {move.source_index} to {move.dest_index}.")
-
-            # Record it
-            self._committed_moves.append(move)
 
             # Apply it
             source_index = move.source_index
