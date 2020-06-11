@@ -127,13 +127,7 @@ while (len(solver.solutions) < 100 ) and (solver.is_exhausted() == False):
             best_solution = solution
             best_sprites_set = unique_sprites
 
-            indices = []
-            for index in unique_sprites:
-                indices.append(str(index))
-
-            indices_str = " ".join(indices)
-
-            print(f"A new best!  Solution {solution_count} has {len(best_sprites_set)} sprites: {indices_str}")
+            print(f"A new best!  Solution {solution_count} has {len(best_sprites_set)} sprites: {sorted(best_sprites_set)}")
 
         # Update count
         solution_count = len(solver.solutions)
