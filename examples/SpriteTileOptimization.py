@@ -8,11 +8,7 @@ from rgtk.constraint_solver import ConstraintSolver
 from rgtk.IndexedColorArray import IndexedColorArray
 from rgtk.PixelArray import PixelArray
 import rgtk.Quantize
-from rgtk.SimpleTimer import SimpleTimer
 from rgtk.SubsetsToBitSetsEvaluator import SubsetsToBitSetsEvaluator
-
-preprocess_timer = SimpleTimer("Preprocess")
-preprocess_timer.begin()
 
 ##############################################################################
 # PIXEL ARRAYS
@@ -102,11 +98,9 @@ for sprite_idx in range(len(potential_sprite_upper_left_positions)):
         num_containing += 1
         print(f"\t{num_containing}: {ul_pos}")
 
-preprocess_timer.end()
+
 ##############################################################################
 # EXECUTE SOLVER
-solver_timer = SimpleTimer("Solver")
-solver_timer.begin()
 
 # THIS SOLUTION MAPS SPRITES INTO PIXELS
 solver = ConstraintSolver(sources=potential_sprite_pixel_coverage_bitsets, destinations=[dest_pixel_bitset], evaluator_class=SubsetsToBitSetsEvaluator, debugging=None)
@@ -115,7 +109,7 @@ solution_count = 0
 best_solutions = None
 best_sprites_set = None
 
-while (len(solver.solutions) < 10000000 ) and (solver.is_exhausted() == False):
+while (len(solver.solutions) < 100 ) and (solver.is_exhausted() == False):
     solver.update()
 
     if len(solver.solutions) != solution_count:
@@ -133,29 +127,18 @@ while (len(solver.solutions) < 10000000 ) and (solver.is_exhausted() == False):
             best_solution = solution
             best_sprites_set = unique_sprites
 
-            print(f"A new best!  Solution {solution_count} has {len(best_sprites_set)} sprites.")
+            indices = []
+            for index in unique_sprites:
+                indices.append(str(index))
+
+            indices_str = " ".join(indices)
+
+            print(f"A new best!  Solution {solution_count} has {len(best_sprites_set)} sprites: {indices_str}")
 
         # Update count
         solution_count = len(solver.solutions)
-
-solver_timer.end()
 
 print(f"Best solution had {len(best_sprites_set)} sprites:")
 for dest_index in best_sprites_set:
     dest_sprite = potential_sprite_upper_left_positions[dest_index]
     print(f"\t{dest_sprite}")
-
-print(f"Preprocess timer: {preprocess_timer.elapsed()}")
-print(f"Solver timer: {solver_timer.elapsed()}")
-print(f"\tName\t\t\tInvocations\tTotal Time\tTime Per Invocation")
-for timer_name in ConstraintSolver.s_timer_names:
-    timer = solver.timer_name_to_timer[timer_name]
-
-    total_time = timer.get_total_time_over_instantiations()
-    instantiations = timer.get_instantiations()
-
-    if instantiations == 0:
-        print(f"\t{timer.name}\t0\tN/A\tN/A")
-    else:
-        print(f"\t{timer.name}\t{instantiations}\t{total_time}\t{total_time / instantiations}")
-        
