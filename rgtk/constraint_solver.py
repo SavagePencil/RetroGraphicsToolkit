@@ -54,8 +54,15 @@ class ConstraintSolver:
             self.timer_name_to_timer[name] = SimpleTimer(name)
 
         # Track our tree of solver nodes.
-        # We'll start with an empty one.
-        self._subset_tree_head = ConstraintSolver.SolverSubsetNode(parent=None, moves_list=[])
+        self._subset_tree = []
+        # We'll start with node with no moves.
+        self._subset_tree.append(ConstraintSolver.SolverSubsetNode(parent=None, moves_list=[]))
+
+        # Where is this subset founded?
+        self._current_subset_solver_tree_node_index = -1
+
+        # Track the nodes to visit in BFS.
+        self._subset_tree_visit_queue = [0]
 
         # Now setup members.
         self.destinations = destinations
@@ -67,8 +74,7 @@ class ConstraintSolver:
 
         # We'll let the first iteration of the solver pull from the WIP.
         self._current_subset_solver = None
-        self._current_subset_solver_node = None
-
+        
         # Create and start the state machine for this solver.
         self._fsm = FSM(self)
         self._fsm.start(ConstraintSolver.AssessCompletionState)
@@ -103,23 +109,6 @@ class ConstraintSolver:
 
         timer.end()
 
-    def _find_first_unvisited_node(self) -> 'ConstraintSolver.SubsetSolverNode':
-        # Use a BFS approach to find the first univisited node.
-        queue = [self._subset_tree_head]
-        curr_node = None
-        done = False
-        while not done:
-            curr_node = queue.pop(0)
-            if curr_node.visited == False:
-                # Found it!
-                done = True
-            else:
-                # Add all children
-                for child in curr_node.children:
-                    queue.append(child)
-
-        return curr_node
-
     def _create_subset_solver(self) -> 'ConstraintSolver.SubsetSolver':
         unmapped_sources_bitset = BitSet(len(self.sources))
         unmapped_sources_bitset.set_all()
@@ -132,22 +121,12 @@ class ConstraintSolver:
             , indent_level=0
             , debugging=self._debugging)
 
-        # Find our starting position using a BFS for each unvisited node.
-        # For example, if this is our tree:
-        # 0:       A
-        # 1:   B   C   D
-        # 2:  E F  G  HIJ
-        # 3:  K   L M  N
-        # 
-        # ...our iteration will find ONE solution in the B tree, then one
-        # solution in the C tree, then one in the D tree before moving on
-
-        # Find first unvisited node.
-        self._current_subset_solver_node = self._find_first_unvisited_node()
+        # Get next source node from the BFS queue
+        self._current_subset_solver_tree_node_index = self._subset_tree_visit_queue.pop(0)
 
         # Apply moves from our parents before us.
         stack = []
-        iter_node = self._current_subset_solver_node
+        iter_node = self._subset_tree[self._current_subset_solver_tree_node_index]
         while iter_node is not None:
             stack.append(iter_node)
             iter_node = iter_node.parent
@@ -166,20 +145,35 @@ class ConstraintSolver:
             # If there's only one set of moves, add them to the node itself.
             move_list = child_move_lists[0]
 
+            curr_node = self._subset_tree[self._current_subset_solver_tree_node_index]
+
             for move in move_list:
-                self._current_subset_solver_node.moves_list.append(move)
+                curr_node.moves_list.append(move)
                 subset_solver._execute_move(move)
         else:
-            # Need to create child nodes.
-            for move_list in child_move_lists:
-                child_node = ConstraintSolver.SolverSubsetNode(parent=self._current_subset_solver_node, moves_list=move_list)
-                self._current_subset_solver_node.children.append(child_node)
+            # There are multiple move sets.  Need to create child nodes.
+            curr_node = self._subset_tree[self._current_subset_solver_tree_node_index]
+
+            for move_list_idx, move_list in enumerate(child_move_lists):
+                child_node = ConstraintSolver.SolverSubsetNode(parent=curr_node, moves_list=move_list)
+                curr_node.children.append(child_node)
+
+                new_node_idx = len(self._subset_tree)
+                self._subset_tree.append(child_node)
+
+                if move_list_idx == 0:
+                    # This is our current subset solver, so we'll keep rolling
+                    # with it so that we don't have to create a new one.
+                    self._current_subset_solver_tree_node_index = new_node_idx
+                else:
+                    # Enqueue the other indices for BFS visiting later.
+                    self._subset_tree_visit_queue.append(new_node_idx)
 
             # Execute the leftmost child's actions so that 
             # we can continue using our current subset solver 
             # without having to create a new one.
-            self._current_subset_solver_node = self._current_subset_solver_node.children[0]
-            for move in self._current_subset_solver_node.moves_list:
+            continue_node = curr_node.children[0]
+            for move in continue_node.moves_list:
                 subset_solver._execute_move(move)
 
     def _remove_current_subset_solver(self) -> List[Move]:
@@ -188,7 +182,7 @@ class ConstraintSolver:
 
         # We'll assign the moves in order from head -> current.
         stack = []
-        iter_node = self._current_subset_solver_node
+        iter_node = self._subset_tree[self._current_subset_solver_tree_node_index]
         while iter_node is not None:
             stack.append(iter_node)
             iter_node = iter_node.parent
@@ -199,19 +193,9 @@ class ConstraintSolver:
             for child_move in child_moves:
                 solution_moves.append(child_move)
 
-        # Walk back up the tree, removing any node that has no children.
-        curr_node = self._current_subset_solver_node.parent
-        while len(curr_node.children) == 1:
-            curr_node.children.pop()
-            curr_node = curr_node.parent
-
         # Remove the current subset solver.
         self._current_subset_solver = None
-        self._current_subset_solver_node = None
-
-        # Consider our origin node as visited.
-        unvisited = self._find_first_unvisited_node()
-        unvisited.visited = True
+        self._current_subset_solver_tree_node_index = -1
 
         return solution_moves
 
@@ -233,8 +217,8 @@ class ConstraintSolver:
         @staticmethod
         def on_enter(context):
             if context._current_subset_solver is None:
-                # Has our tree been exhausted?
-                if context._subset_tree_head is None:
+                # Has our queue been exhausted?
+                if len(context._subset_tree_visit_queue) == 0:
                     return ConstraintSolver.ExhaustedState
                 else:
                     # Otherwise, we'll create a new subset solver from the tree.
@@ -293,7 +277,6 @@ class ConstraintSolver:
             self.parent = parent
             self.moves_list = moves_list
             self.children = []
-            self.visited = False
 
         def add_child(self, moves_list: List[Move]):
             child = ConstraintSolver.SolverSubsetNode(parent=self, moves_list=moves_list)
