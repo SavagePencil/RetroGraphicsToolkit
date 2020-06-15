@@ -7,6 +7,7 @@ from rgtk.BitSet import BitSet
 from rgtk.constraint_solver import ConstraintSolver
 from rgtk.IndexedColorArray import IndexedColorArray
 from rgtk.PixelArray import PixelArray
+from rgtk.PixelsToFewestSpritesEvaluator import PixelsToFewestSpritesEvaluator
 import rgtk.Quantize
 from rgtk.SubsetsToBitSetsEvaluator import SubsetsToBitSetsEvaluator
 
@@ -84,29 +85,131 @@ for y_start in range(-sprite_height + 1, indexed_array.height + sprite_height - 
                 coverage.set_bit(pixel_index)
 
             # Append the positions and the coverages in separate lists
-            # (we'll just use the coverage set for the solver)
             potential_sprite_upper_left_positions.append((x_start, y_start))
             potential_sprite_pixel_coverage_bitsets.append(coverage)
+
+##############################################################################
+# MAP PIXEL CONNECTIVITY
+# Find out which pixels belong to which sprites,
+# and which pixels a given pixel is adjacent to.
+
+# Which sprites cover this pixel?
+pixel_to_potential_sprite_bitsets = []
+# Which pixels is each pixel adjacent to?  We'll fill these out as we go over
+# the potential sprites.
+pixel_adjacency_bitsets = []
+
+# Create the lists first.
+count = len(pixel_list)
+while count > 0:
+    pixel_to_potential_sprite_bitset = BitSet(len(potential_sprite_upper_left_positions))
+    pixel_to_potential_sprite_bitsets.append(pixel_to_potential_sprite_bitset)
+    pixel_adjacency_bitset = BitSet(len(pixel_list))
+    pixel_adjacency_bitsets.append(pixel_adjacency_bitset)
+
+    count -= 1
+
+# Now calculate the connectivity
+for sprite_idx, coverage in enumerate(potential_sprite_pixel_coverage_bitsets):
+    pixel_idx = coverage.get_next_set_bit_index(0)
+    while pixel_idx is not None:
+        # Set that this pixel is adjacent to this sprite.
+        pixel_to_potential_sprite_bitset = pixel_to_potential_sprite_bitsets[pixel_idx]
+        pixel_to_potential_sprite_bitset.set_bit(sprite_idx)
+
+        # If this pixel is in this sprite, that means it's adjacent to all of the
+        # other pixels in this sprite, which we've ID'd as coverage.  
+        # Union in this sprite's coverage.
+        pixel_adjacency_bitset = pixel_adjacency_bitsets[pixel_idx]
+        pixel_adjacency_bitset.union_with(coverage)
+
+        # Neexxxxxxxxtttt
+        pixel_idx = coverage.get_next_set_bit_index(pixel_idx + 1)
 
 # Sanity check:  How many sprites hold the first pixel index?
 print(f"Sprites holding pixel 0 (location {pixel_list[0]}):")
 num_containing = 0
-for sprite_idx in range(len(potential_sprite_upper_left_positions)):
-    coverage = potential_sprite_pixel_coverage_bitsets[sprite_idx]
-    if coverage.is_set(0):
-        ul_pos = potential_sprite_upper_left_positions[sprite_idx]
-        num_containing += 1
-        print(f"\t{num_containing}: {ul_pos}")
+enclosing_sprites_bitset = pixel_to_potential_sprite_bitsets[0]
+sprite_idx = enclosing_sprites_bitset.get_next_set_bit_index(0)
+while sprite_idx is not None:
+    ul_pos = potential_sprite_upper_left_positions[sprite_idx]
+    num_containing += 1
+    print(f"\t{num_containing}: {ul_pos}")
 
+    sprite_idx = enclosing_sprites_bitset.get_next_set_bit_index(sprite_idx + 1)
 
 ##############################################################################
 # EXECUTE SOLVER
+
+# THIS SOLUTION MAPS PIXELS INTO SPRITES
+# Each source is a pixel's adjacency matrix + potential sprites.
+# The destination is a list of sprite indices used to solve the problem.
+sources = []
+destinations = []
+
+for pixel_idx in range(len(pixel_list)):
+    pixel_to_potential_sprite_bitset = pixel_to_potential_sprite_bitsets[pixel_idx]
+    pixel_adjacency_bitset = pixel_adjacency_bitsets[pixel_idx]
+    sprite_pixel_coverages = potential_sprite_pixel_coverage_bitsets
+
+    # Remember that sources are read-only and don't get copied, so don't get freaked
+    # out about how big these objects could be.
+    source = PixelsToFewestSpritesEvaluator.Source(
+          pixel_to_potential_sprites_bitset=pixel_to_potential_sprite_bitset
+        , pixel_adjacency_bitset=pixel_adjacency_bitset
+        , sprite_pixel_coverages=sprite_pixel_coverages
+    )
+    sources.append(source)
+
+    # Create an empty destination, as worst-case we have one sprite per pixel.
+    # (and yes, it has to be an object because a List of PODs gets copied by value)
+    destinations.append(PixelsToFewestSpritesEvaluator.Destination())
+
+solver = ConstraintSolver(sources=sources, destinations=destinations, evaluator_class=PixelsToFewestSpritesEvaluator, debugging=None)
+solution_count = 0
+best_solution = None
+best_sprites_list = None
+
+while (len(solver.solutions) < 100 ) and (solver.is_exhausted() == False):
+    solver.update()
+
+    if len(solver.solutions) != solution_count:
+        # Compare the previous best against the new one.
+        solution = solver.solutions[solution_count]
+
+        sprite_index_list = []
+        sprite_pos_list = []
+        pixel_pos_list = []
+        for move in solution:
+            if move.change_list is not None:
+                sprite_idx = move.change_list.dest_sprite_index
+                sprite_index_list.append(sprite_idx)
+                sprite_pos = potential_sprite_upper_left_positions[sprite_idx]
+                sprite_pos_list.append(sprite_pos)
+                pixel_idx = move.source_index
+                pixel_pos = pixel_list[pixel_idx]
+                pixel_pos_list.append(pixel_pos)
+
+        if (best_sprites_list is None) or (len(sprite_index_list) < len(best_sprites_list)):
+            # A new best solution.
+            best_solution = solution
+            best_sprites_list = sprite_index_list
+
+            print(f"A new best!  Solution {solution_count} has {len(sprite_index_list)} sprites: {sprite_index_list}")
+            for idx in range(len(sprite_pos_list)):
+                print(f"\t{idx}: Pixel {pixel_pos_list[idx]} drove us to select sprite at {sprite_pos_list[idx]}.")
+
+        # Update count
+        solution_count = len(solver.solutions)
+
+
+
 
 # THIS SOLUTION MAPS SPRITES INTO PIXELS
 solver = ConstraintSolver(sources=potential_sprite_pixel_coverage_bitsets, destinations=[dest_pixel_bitset], evaluator_class=SubsetsToBitSetsEvaluator, debugging=None)
 
 solution_count = 0
-best_solutions = None
+best_solution = None
 best_sprites_set = None
 
 while (len(solver.solutions) < 100 ) and (solver.is_exhausted() == False):
