@@ -12,8 +12,6 @@ class RasterPixelsToSpritesEvaluator(Evaluator):
             # Which pixels do all of the sprites in the world cover?
             self.sprite_pixel_coverages = sprite_pixel_coverages
 
-    # Static Vars
-
     class PotentialMove:
         def __init__(self, move: Move, base_score: int):
             self.move = move
@@ -117,6 +115,8 @@ class RasterPixelsToSpritesEvaluator(Evaluator):
                 # Find the one matching the best heuristic.
                 for candidate_idx, candidate in enumerate(candidate_lists):
                     # HEURISTIC:  MOST PIXELS BEING ADDED
+                    # In testing, this produced worse results than choosing
+                    # sprites with the lowest overlap of already-chosen pixels.
                     #pixels_value = candidate.num_pixels_added
                     # HEURISTIC:  FEWEST OVERLAP
                     pixels_value = candidate.num_pixels_overlapped
