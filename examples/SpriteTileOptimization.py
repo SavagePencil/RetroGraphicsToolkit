@@ -166,7 +166,7 @@ dest_pixel_bitset = BitSet(len(pixel_list))
 solver = ConstraintSolver(sources=sources, destinations=[dest_pixel_bitset], evaluator_class=RasterPixelsToSpritesEvaluator, debugging=None)
 
 solution_count = 0
-best_solutions = None
+best_solutions = []
 best_pixels_list = None
 best_sprites_list = None
 
@@ -189,7 +189,7 @@ while (len(solver.solutions) < max_solutions ) and (solver.is_exhausted() == Fal
 
         if (best_sprites_list is None) or (len(sprites_list) < len(best_sprites_list)):
             # A new best solution.
-            best_solution = solution
+            best_solutions.append(solution)
             best_sprites_list = sprites_list
             best_pixels_list = pixels_list
 
