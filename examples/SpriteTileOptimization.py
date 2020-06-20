@@ -169,6 +169,7 @@ solution_count = 0
 best_solutions = []
 best_pixels_list = None
 best_sprites_list = None
+best_sprites_on_a_line = math.inf
 
 # Solver will stop when it is either exhausted or finds this many solutions.
 max_solutions = 250
@@ -187,13 +188,30 @@ while (len(solver.solutions) < max_solutions ) and (solver.is_exhausted() == Fal
                 pixels_list.append(move.source_index)
                 sprites_list.append(move.change_list.dest_sprite_index)
 
-        if (best_sprites_list is None) or (len(sprites_list) < len(best_sprites_list)):
-            # A new best solution.
-            best_solutions.append(solution)
-            best_sprites_list = sprites_list
-            best_pixels_list = pixels_list
+        if (best_sprites_list is None) or (len(sprites_list) <= len(best_sprites_list)):
+            # See what the highest number of sprites on a given line were.
+            sprites_on_a_line_map = {}
+            for sprite_index in sprites_list:
+                sprite_pos = potential_sprite_upper_left_positions[sprite_index]
+                for y in range (sprite_pos[1], sprite_pos[1] + sprite_height):
+                    if y in sprites_on_a_line_map:
+                        sprites_on_a_line_map[y] += 1
+                    else:
+                        sprites_on_a_line_map[y] = 1
 
-            print(f"A new best!  Solution {solution_count} has {len(best_sprites_list)} sprites: {best_sprites_list}")
+            # Count 'em up.
+            max_sprites_on_a_line = -math.inf
+            for y, count in sprites_on_a_line_map.items():
+                max_sprites_on_a_line = max(max_sprites_on_a_line, count)
+
+            if max_sprites_on_a_line < best_sprites_on_a_line:
+                # A new best solution.
+                best_solutions.append(solution)
+                best_sprites_list = sprites_list
+                best_pixels_list = pixels_list
+                best_sprites_on_a_line = max_sprites_on_a_line
+
+                print(f"A new best!  Solution {solution_count} has {len(best_sprites_list)} sprites with worst case of {best_sprites_on_a_line} sprites on a single scanline: {best_sprites_list}")
 
         # Update count
         solution_count = len(solver.solutions)
