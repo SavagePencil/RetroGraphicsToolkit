@@ -2,7 +2,7 @@ astroid==2.4.1
 isort==4.3.21
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
-Pillow==8.1.2
+Pillow>=8.3.2
 pylint==2.5.2
 -e git+https://github.com/SavagePencil/RetroGraphicsToolkit.git@9f2554ba4e255d7221d19ccbf1dfbe786b0c5c82#egg=rgtk
 six==1.14.0
